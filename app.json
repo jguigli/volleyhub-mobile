@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "VolleyFinder",
+    "slug": "volleyfinder",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logo.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b1017"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.volleyfinder.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "VolleyFinder uses your location to show nearby courts and matches.",
+        "NSLocationAlwaysUsageDescription": "VolleyFinder uses your location to show nearby courts and matches.",
+        "NSPhotoLibraryUsageDescription": "VolleyFinder needs access to your photos to set your profile picture.",
+        "NSCameraUsageDescription": "VolleyFinder can use the camera to take your profile picture."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#0b1017"
+      },
+      "package": "com.volleyfinder.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/logo.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "VolleyFinder needs access to your photos to set your profile picture.",
+          "cameraPermission": "VolleyFinder can use the camera to take your profile picture."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "VolleyFinder needs location access to show nearby courts and matches."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#1a73e8"
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ],
+    "scheme": "volleyfinder"
+  }
+}

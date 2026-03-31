@@ -1,0 +1,95 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+};
+
+export type CreateMatchParams = {
+  openMapPicker?: boolean;
+  pickerLat?: number;
+  pickerLng?: number;
+};
+
+export type FindStackParamList = {
+  MatchList: undefined;
+  MatchDetail: { matchId: string };
+  MatchSettings: { matchId: string };
+  MatchTeamsBoard: { matchId: string };
+  EventScore: { matchId: string };
+  TournamentCourts: { matchId: string };
+  MatchChat: { matchId: string };
+  MatchParticipants: { matchId: string };
+  InvitePlayer: { matchId: string };
+  CreateMatch: CreateMatchParams;
+  UserProfile: { userId: string };
+};
+
+export type MapStackParamList = {
+  Map: { focusLat?: number; focusLng?: number };
+  CreateMatch: CreateMatchParams;
+  MatchDetail: { matchId: string };
+  MatchSettings: { matchId: string };
+  MatchTeamsBoard: { matchId: string };
+  EventScore: { matchId: string };
+  TournamentCourts: { matchId: string };
+  MatchChat: { matchId: string };
+  MatchParticipants: { matchId: string };
+  InvitePlayer: { matchId: string };
+  UserProfile: { userId: string };
+};
+
+export type MyStackParamList = {
+  MyMatches: undefined;
+  MyMatchesCalendar: undefined;
+  MatchDetail: { matchId: string };
+  MatchSettings: { matchId: string };
+  MatchTeamsBoard: { matchId: string };
+  EventScore: { matchId: string };
+  TournamentCourts: { matchId: string };
+  MatchChat: { matchId: string };
+  MatchParticipants: { matchId: string };
+  InvitePlayer: { matchId: string };
+  CreateMatch: CreateMatchParams;
+  UserProfile: { userId: string };
+};
+
+export type ProfileStackParamList = {
+  Profile: undefined;
+  Connections: { userId: string };
+  Settings: undefined;
+  EditProfile: undefined;
+  MatchDetail: { matchId: string };
+  MatchSettings: { matchId: string };
+  MatchTeamsBoard: { matchId: string };
+  EventScore: { matchId: string };
+  TournamentCourts: { matchId: string };
+  MatchChat: { matchId: string };
+  MatchParticipants: { matchId: string };
+  InvitePlayer: { matchId: string };
+  /** Recherche de joueurs par pseudo (UI mock côté client pour l’instant) */
+  SearchUsers: undefined;
+  UserProfile: { userId: string };
+  Notifications: undefined;
+};
+
+export type MainTabParamList = {
+  FindTab: NavigatorScreenParams<FindStackParamList>;
+  MapTab: NavigatorScreenParams<MapStackParamList>;
+  MyTab: NavigatorScreenParams<MyStackParamList>;
+  ProfileTab: NavigatorScreenParams<ProfileStackParamList>;
+};
+
+/** Backward-compat alias used inside MatchDetail (shared between stacks) */
+export type MatchesStackParamList = FindStackParamList;
+
+export type AuthStackScreenProps<T extends keyof AuthStackParamList> =
+  NativeStackScreenProps<AuthStackParamList, T>;
+
+export type MainTabScreenProps<T extends keyof MainTabParamList> =
+  BottomTabScreenProps<MainTabParamList, T>;
+
+export type MapStackScreenProps<T extends keyof MapStackParamList> =
+  NativeStackScreenProps<MapStackParamList, T>;
