@@ -311,7 +311,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
     useState<number>(21);
   const [tournamentCourtCount, setTournamentCourtCount] = useState(2);
   const [tournamentSystem, setTournamentSystem] =
-    useState<TournamentSystem>('single_elimination');
+    useState<TournamentSystem>('round_robin');
   const [skillLevel, setSkillLevel] = useState<SkillLevel>('intermediate');
   const [description, setDescription] = useState('');
   const [showCourtPicker, setShowCourtPicker] = useState(false);
@@ -352,6 +352,67 @@ export function CreateMatchScreen({ navigation, route }: Props) {
       setTeamSize(teamSizeOptions[teamSizeOptions.length - 1]);
     }
   }, [eventMode, volleyType, teamSizeOptions, teamSize]);
+
+  // Team count options based on selected tournament system
+  const teamCountOptions = useMemo((): number[] => {
+    switch (tournamentSystem) {
+      case 'round_robin':
+        return [3, 4, 5, 6];
+      case 'pools_finals':
+        return [6, 8, 10, 12, 16];
+      case 'single_elimination':
+        return [4, 8, 16];
+      default:
+        return [4, 8];
+    }
+  }, [tournamentSystem]);
+
+  // Auto-adjust teamCount when system changes
+  useEffect(() => {
+    if (eventMode !== 'tournament') return;
+    if (!teamCountOptions.includes(teamCount)) {
+      setTeamCount(teamCountOptions[0]);
+    }
+  }, [eventMode, tournamentSystem, teamCountOptions, teamCount]);
+
+  const roundRobinMatchCount = teamCount * (teamCount - 1) / 2;
+  const showRoundRobinWarning =
+    tournamentSystem === 'round_robin' && roundRobinMatchCount > 15;
+
+  // Estimated tournament duration
+  const estimatedDuration = useMemo(() => {
+    let totalMatches: number;
+    switch (tournamentSystem) {
+      case 'round_robin':
+        totalMatches = teamCount * (teamCount - 1) / 2;
+        break;
+      case 'pools_finals': {
+        const poolCount = teamCount > 8 ? 4 : 2;
+        const perPool = Math.ceil(teamCount / poolCount);
+        const poolMatches = poolCount * (perPool * (perPool - 1) / 2);
+        const finalsMatches = poolCount === 4 ? 3 : 1; // semis + final or just final
+        totalMatches = poolMatches + finalsMatches;
+        break;
+      }
+      case 'single_elimination': {
+        totalMatches = teamCount - 1;
+        break;
+      }
+      default:
+        totalMatches = teamCount - 1;
+    }
+
+    const avgMatchMinutes = Math.round(tournamentPointsPerMatch * 1.2);
+    const maxParallel = Math.min(tournamentCourtCount, Math.floor(teamCount / 2));
+    const rounds = Math.ceil(totalMatches / Math.max(1, maxParallel));
+    const totalMinutes = rounds * avgMatchMinutes;
+
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    if (hours > 0 && mins > 0) return `~${hours}h${String(mins).padStart(2, '0')}`;
+    if (hours > 0) return `~${hours}h`;
+    return `~${totalMinutes}min`;
+  }, [tournamentSystem, teamCount, tournamentPointsPerMatch, tournamentCourtCount]);
 
   const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
     if (event.type === 'dismissed') {
@@ -796,6 +857,14 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                   );
                 })}
               </View>
+              {showRoundRobinWarning ? (
+                <View style={styles.roundRobinWarning}>
+                  <Ionicons name="warning-outline" size={16} color={colors.warning} />
+                  <Text style={styles.roundRobinWarningText}>
+                    {t('createMatch.roundRobinWarning', { n: String(roundRobinMatchCount) })}
+                  </Text>
+                </View>
+              ) : null}
             </>
           ) : null}
 
@@ -862,22 +931,23 @@ export function CreateMatchScreen({ navigation, route }: Props) {
           ) : (
             <>
               <Text style={styles.subsectionLabel}>{t('createMatch.teamCount')}</Text>
-              <View style={styles.stepperRow}>
-                <Pressable
-                  style={styles.stepperBtn}
-                  onPress={() => setTeamCount((v) => Math.max(3, v - 1))}
-                  disabled={teamCount <= 3}
-                >
-                  <Ionicons name="remove" size={20} color={teamCount <= 3 ? colors.textMuted : colors.primary} />
-                </Pressable>
-                <Text style={styles.stepperValue}>{teamCount}</Text>
-                <Pressable
-                  style={styles.stepperBtn}
-                  onPress={() => setTeamCount((v) => Math.min(16, v + 1))}
-                  disabled={teamCount >= 16}
-                >
-                  <Ionicons name="add" size={20} color={teamCount >= 16 ? colors.textMuted : colors.primary} />
-                </Pressable>
+              <View style={styles.chips}>
+                {teamCountOptions.map((n) => (
+                  <TouchableOpacity
+                    key={n}
+                    style={[styles.chip, teamCount === n && styles.chipSelected]}
+                    onPress={() => setTeamCount(n)}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        teamCount === n && styles.chipTextSelected,
+                      ]}
+                    >
+                      {n}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
               <Text style={styles.subsectionLabel}>{t('createMatch.teamSize')}</Text>
               <View style={styles.chips}>
@@ -918,7 +988,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                   onPress={() => setTournamentCourtCount((v) => Math.min(20, v + 1))}
                   disabled={tournamentCourtCount >= 20}
                 >
-                  <Ionicons name="add" size={20} color={tournamentCourtCount >= 12 ? colors.textMuted : colors.primary} />
+                  <Ionicons name="add" size={20} color={tournamentCourtCount >= 20 ? colors.textMuted : colors.primary} />
                 </Pressable>
               </View>
               <Text style={styles.subsectionLabel}>
@@ -944,6 +1014,18 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                     </Text>
                   </TouchableOpacity>
                 ))}
+              </View>
+
+              <View style={styles.durationEstimate}>
+                <View style={styles.durationIconWrap}>
+                  <Ionicons name="time-outline" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.durationTextWrap}>
+                  <Text style={styles.durationLabel}>
+                    {t('createMatch.estimatedDuration')}
+                  </Text>
+                  <Text style={styles.durationValue}>{estimatedDuration}</Text>
+                </View>
               </View>
             </>
           )}
@@ -1495,6 +1577,56 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: colors.white,
+  },
+  durationEstimate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  durationIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary + '18',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  durationTextWrap: {
+    flex: 1,
+  },
+  durationLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  durationValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.text,
+    marginTop: 2,
+  },
+  roundRobinWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.warning + '14',
+    borderWidth: 1,
+    borderColor: colors.warning + '33',
+  },
+  roundRobinWarningText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.warning,
   },
   tournamentSystemList: {
     gap: spacing.sm,

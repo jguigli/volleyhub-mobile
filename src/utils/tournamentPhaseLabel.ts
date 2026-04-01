@@ -5,10 +5,14 @@ export function tournamentPhaseSortKey(phase: string | null | undefined): number
       return 0;
     case 'pool_b':
       return 1;
-    case 'finals':
-      return 3;
-    default:
+    case 'pool_c':
       return 2;
+    case 'pool_d':
+      return 3;
+    case 'finals':
+      return 5;
+    default:
+      return 4;
   }
 }
 
@@ -22,6 +26,10 @@ export function formatTournamentPhase(
       return t('match.phasePoolA');
     case 'pool_b':
       return t('match.phasePoolB');
+    case 'pool_c':
+      return t('match.phasePoolC');
+    case 'pool_d':
+      return t('match.phasePoolD');
     case 'finals':
       return t('match.phaseFinals');
     default: {

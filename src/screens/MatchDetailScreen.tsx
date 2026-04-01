@@ -354,6 +354,19 @@ export function MatchDetailScreen({ route, navigation }: Props) {
     return () => loop.stop();
   }, [match?.id, match?.status, match?.scheduledAt, courtsPulse]);
 
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => {
+    if (!match) return;
+    const sMs = new Date(match.scheduledAt).getTime();
+    const isLiveNow =
+      match.status !== 'completed' &&
+      match.status !== 'cancelled' &&
+      Date.now() >= sMs;
+    if (!isLiveNow) return;
+    const id = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, [match?.id, match?.status, match?.scheduledAt]);
+
   if (isLoading) {
     return (
       <View style={styles.centered}>
@@ -390,12 +403,6 @@ export function MatchDetailScreen({ route, navigation }: Props) {
       : nowMs >= startMs
         ? 'live'
         : 'upcoming';
-  const [nowTick, setNowTick] = useState(nowMs);
-  useEffect(() => {
-    if (timingBadge !== 'live') return;
-    const id = setInterval(() => setNowTick(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, [timingBadge]);
   const liveMinutes = Math.max(1, Math.floor((nowTick - startMs) / 60000));
   const dateStr = scheduledDate.toLocaleDateString(localeTag, {
     weekday: 'long',

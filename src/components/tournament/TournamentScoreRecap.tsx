@@ -158,27 +158,35 @@ function BracketColumns({
   );
 }
 
+const POOL_LABELS = ['poolA', 'poolB', 'poolC', 'poolD'] as const;
+const POOL_PHASES = ['pool_a', 'pool_b', 'pool_c', 'pool_d'] as const;
+
 function PoolsFinalsColumns({
-  poolA,
-  poolB,
+  games,
   finals,
   teamCount,
   t,
 }: {
-  poolA: TournamentGame[];
-  poolB: TournamentGame[];
+  games: TournamentGame[];
   finals: TournamentGame[];
   teamCount: number;
   t: TFunc;
 }) {
-  const poolARounds = useMemo(
-    () => uniqueSortedRounds(poolA.map((g) => ({ round: g.round ?? 0 }))),
-    [poolA],
-  );
-  const poolBRounds = useMemo(
-    () => uniqueSortedRounds(poolB.map((g) => ({ round: g.round ?? 0 }))),
-    [poolB],
-  );
+  const pools = useMemo(() => {
+    const result: { phase: string; label: string; games: TournamentGame[] }[] = [];
+    for (let i = 0; i < POOL_PHASES.length; i++) {
+      const poolGames = games.filter((g) => g.phase === POOL_PHASES[i]);
+      if (poolGames.length > 0) {
+        result.push({
+          phase: POOL_PHASES[i],
+          label: `match.${POOL_LABELS[i]}`,
+          games: poolGames,
+        });
+      }
+    }
+    return result;
+  }, [games]);
+
   const finalsRounds = useMemo(
     () => uniqueSortedRounds(finals.map((g) => ({ round: g.round ?? 0 }))),
     [finals],
@@ -191,71 +199,44 @@ function PoolsFinalsColumns({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.bracketScroll}
       >
-        {/* Pool A columns */}
-        {poolA.length > 0 ? (
-          <>
-            {poolARounds.map((r, i) => {
-              const inRound = gamesInRound(poolA, r);
-              return (
-                <View key={`pa-${r}`} style={styles.bracketCol}>
-                  <Text style={[styles.roundTitle, i === 0 && styles.phaseTitle]}>
-                    {i === 0 ? t('match.poolA') : ' '}
-                  </Text>
-                  <Text style={styles.roundSubtitle}>
-                    {t('match.tournamentRoundTitle', { n: String(r + 1) })}
-                  </Text>
-                  <View style={styles.bracketColInner}>
-                    {inRound.map((g, j) => (
-                      <MatchMiniCard
-                        key={g.fixtureId ?? `pa-${r}-${j}`}
-                        g={g}
-                        teamCount={teamCount}
-                        t={t}
-                        hidePhase
-                      />
-                    ))}
+        {pools.map((pool, poolIdx) => {
+          const rounds = uniqueSortedRounds(
+            pool.games.map((g) => ({ round: g.round ?? 0 })),
+          );
+          return (
+            <React.Fragment key={pool.phase}>
+              {poolIdx > 0 ? <View style={styles.phaseSep} /> : null}
+              {rounds.map((r, i) => {
+                const inRound = gamesInRound(pool.games, r);
+                return (
+                  <View key={`${pool.phase}-${r}`} style={styles.bracketCol}>
+                    <Text style={[styles.roundTitle, i === 0 && styles.phaseTitle]}>
+                      {i === 0 ? t(pool.label) : ' '}
+                    </Text>
+                    <Text style={styles.roundSubtitle}>
+                      {t('match.tournamentRoundTitle', { n: String(r + 1) })}
+                    </Text>
+                    <View style={styles.bracketColInner}>
+                      {inRound.map((g, j) => (
+                        <MatchMiniCard
+                          key={g.fixtureId ?? `${pool.phase}-${r}-${j}`}
+                          g={g}
+                          teamCount={teamCount}
+                          t={t}
+                          hidePhase
+                        />
+                      ))}
+                    </View>
                   </View>
-                </View>
-              );
-            })}
-          </>
-        ) : null}
+                );
+              })}
+            </React.Fragment>
+          );
+        })}
 
-        {/* Pool B columns */}
-        {poolB.length > 0 ? (
-          <>
-            {poolA.length > 0 ? <View style={styles.phaseSep} /> : null}
-            {poolBRounds.map((r, i) => {
-              const inRound = gamesInRound(poolB, r);
-              return (
-                <View key={`pb-${r}`} style={styles.bracketCol}>
-                  <Text style={[styles.roundTitle, i === 0 && styles.phaseTitle]}>
-                    {i === 0 ? t('match.poolB') : ' '}
-                  </Text>
-                  <Text style={styles.roundSubtitle}>
-                    {t('match.tournamentRoundTitle', { n: String(r + 1) })}
-                  </Text>
-                  <View style={styles.bracketColInner}>
-                    {inRound.map((g, j) => (
-                      <MatchMiniCard
-                        key={g.fixtureId ?? `pb-${r}-${j}`}
-                        g={g}
-                        teamCount={teamCount}
-                        t={t}
-                        hidePhase
-                      />
-                    ))}
-                  </View>
-                </View>
-              );
-            })}
-          </>
-        ) : null}
-
-        {/* Finals columns */}
         {finals.length > 0 ? (
           <>
-            {(poolA.length > 0 || poolB.length > 0) ? <View style={styles.phaseSep} /> : null}
+            {pools.length > 0 ? <View style={styles.phaseSep} /> : null}
             {finalsRounds.map((r, i) => {
               const inRound = gamesInRound(finals, r);
               return (
@@ -300,14 +281,6 @@ export function TournamentScoreRecap({
   const teamCount = Math.max(0, match.teamCount ?? 0);
   const system: TournamentSystem = match.tournamentSystem ?? 'single_elimination';
 
-  const poolAGames = useMemo(
-    () => games.filter((g) => g.phase === 'pool_a'),
-    [games],
-  );
-  const poolBGames = useMemo(
-    () => games.filter((g) => g.phase === 'pool_b'),
-    [games],
-  );
   const finalsGames = useMemo(
     () => games.filter((g) => g.phase === 'finals'),
     [games],
@@ -330,8 +303,7 @@ export function TournamentScoreRecap({
 
       {system === 'pools_finals' ? (
         <PoolsFinalsColumns
-          poolA={poolAGames}
-          poolB={poolBGames}
+          games={games}
           finals={finalsGames}
           teamCount={teamCount}
           t={t}
