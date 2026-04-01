@@ -10,6 +10,7 @@ import { MatchSettingsScreen } from '../screens/MatchSettingsScreen';
 import { MatchTeamsBoardScreen } from '../screens/MatchTeamsBoardScreen';
 import { EventScoreScreen } from '../screens/EventScoreScreen';
 import { TournamentCourtsScreen } from '../screens/TournamentCourtsScreen';
+import { TournamentStandingsScreen } from '../screens/TournamentStandingsScreen';
 import { MatchChatScreen } from '../screens/MatchChatScreen';
 import { MatchParticipantsScreen } from '../screens/MatchParticipantsScreen';
 import { CreateMatchScreen } from '../screens/CreateMatchScreen';
@@ -88,6 +89,11 @@ function FindNavigator() {
         options={{ title: t('match.viewTournamentCourts') }}
       />
       <FindStack.Screen
+        name="TournamentStandings"
+        component={TournamentStandingsScreen}
+        options={{ title: t('match.tournamentStandingsTitle') }}
+      />
+      <FindStack.Screen
         name="MatchChat"
         component={MatchChatScreen}
         options={{ title: t('nav.matchGroupChat') }}
@@ -159,6 +165,22 @@ function MapNavigator() {
         options={{
           headerShown: true,
           title: t('match.viewScoreDetail'),
+        }}
+      />
+      <MapStack.Screen
+        name="TournamentCourts"
+        component={TournamentCourtsScreen}
+        options={{
+          headerShown: true,
+          title: t('match.viewTournamentCourts'),
+        }}
+      />
+      <MapStack.Screen
+        name="TournamentStandings"
+        component={TournamentStandingsScreen}
+        options={{
+          headerShown: true,
+          title: t('match.tournamentStandingsTitle'),
         }}
       />
       <MapStack.Screen
@@ -236,6 +258,11 @@ function MyNavigator() {
         name="TournamentCourts"
         component={TournamentCourtsScreen}
         options={{ title: t('match.viewTournamentCourts') }}
+      />
+      <MyStack.Screen
+        name="TournamentStandings"
+        component={TournamentStandingsScreen}
+        options={{ title: t('match.tournamentStandingsTitle') }}
       />
       <MyStack.Screen
         name="MatchChat"
@@ -318,6 +345,11 @@ function ProfileNavigator() {
         name="TournamentCourts"
         component={TournamentCourtsScreen}
         options={{ title: t('match.viewTournamentCourts') }}
+      />
+      <ProfileStack.Screen
+        name="TournamentStandings"
+        component={TournamentStandingsScreen}
+        options={{ title: t('match.tournamentStandingsTitle') }}
       />
       <ProfileStack.Screen
         name="MatchChat"

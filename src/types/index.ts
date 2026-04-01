@@ -62,6 +62,8 @@ export interface TournamentGame {
   teamBIndex: number;
   scoreA: number;
   scoreB: number;
+  scoreAConfirmed?: boolean;
+  scoreBConfirmed?: boolean;
   /** Terrain 0 … tournamentCourtCount-1 */
   courtIndex?: number;
   /** Tour de l’arbre (0 = premier tour). */
@@ -79,6 +81,8 @@ export interface TournamentFixture {
   teamBIndex: number | null;
   scoreA: number;
   scoreB: number;
+  scoreAConfirmed?: boolean;
+  scoreBConfirmed?: boolean;
   courtIndex: number | null;
   status: 'pending' | 'ready' | 'live' | 'finished';
   dependsOnFixtureIds: string[] | null;

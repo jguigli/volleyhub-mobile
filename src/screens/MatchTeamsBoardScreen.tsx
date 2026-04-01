@@ -111,7 +111,8 @@ export function MatchTeamsBoardScreen({ route }: Props) {
       user &&
       user.id === match.creatorId &&
       !isTournamentMatch(match) &&
-      match.status !== 'completed',
+      match.status !== 'completed' &&
+      !isLive,
   );
 
   const canManageTournamentTeams = Boolean(
@@ -119,9 +120,17 @@ export function MatchTeamsBoardScreen({ route }: Props) {
       user &&
       user.id === match.creatorId &&
       isTournamentMatch(match) &&
-      match.status !== 'completed',
+      match.status !== 'completed' &&
+      !isLive,
   );
-  const teamsLocked = match?.status === 'completed';
+  const isLive = Boolean(
+    match &&
+      match.status !== 'completed' &&
+      match.status !== 'cancelled' &&
+      Date.now() >= new Date(match.scheduledAt).getTime(),
+  );
+  const teamsLocked =
+    match?.status === 'completed' || isLive;
 
   const setOrganizerTeam = useCallback((uid: string, idx: number | null) => {
     setTeamByUser((prev) => ({ ...prev, [uid]: idx }));
@@ -435,56 +444,15 @@ export function MatchTeamsBoardScreen({ route }: Props) {
         ) : null}
 
         {canManageTournamentTeams && match.participants.length > 0 ? (
-          <View style={styles.organizerSection}>
-            <Text style={styles.organizerTitle}>{t('match.assignTeamsTournamentHint')}</Text>
-            {match.participants.map((p) => {
-              const cur = teamByUser[p.userId] ?? null;
-              return (
-                <View key={p.userId} style={styles.organizerRow}>
-                  <Text style={styles.organizerName} numberOfLines={1}>
-                    {p.user.username}
-                  </Text>
-                  <View style={styles.teamPickWrap}>
-                    <View style={styles.teamPick}>
-                      {teamOptions.map(({ idx, label }) => (
-                        <TouchableOpacity
-                          key={String(idx)}
-                          style={[
-                            styles.teamChip,
-                            cur === idx && styles.teamChipSelected,
-                          ]}
-                          onPress={() => setOrganizerTeam(p.userId, idx)}
-                        >
-                          <Text
-                            style={[
-                              styles.teamChipText,
-                              cur === idx && styles.teamChipTextSelected,
-                            ]}
-                          >
-                            {label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
-            <TouchableOpacity
-              style={[
-                styles.organizerSaveBtn,
-                manageMut.isPending && styles.btnDisabled,
-              ]}
-              onPress={handleOrganizerSaveTournament}
-              disabled={manageMut.isPending}
-            >
-              {manageMut.isPending ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <Text style={styles.organizerSaveText}>{t('match.saveManage')}</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          <TournamentOrganizerSection
+            participants={match.participants}
+            teamCount={n}
+            teamByUser={teamByUser}
+            setOrganizerTeam={setOrganizerTeam}
+            onSave={handleOrganizerSaveTournament}
+            saving={manageMut.isPending}
+            t={t}
+          />
         ) : null}
       </ScrollView>
     );
@@ -725,6 +693,272 @@ export function MatchTeamsBoardScreen({ route }: Props) {
   );
 }
 
+/* ──────────────────────────────────────────────
+   Organizer section with dropdown per player
+   ────────────────────────────────────────────── */
+
+function TournamentOrganizerSection({
+  participants,
+  teamCount,
+  teamByUser,
+  setOrganizerTeam,
+  onSave,
+  saving,
+  t,
+}: {
+  participants: MatchParticipant[];
+  teamCount: number;
+  teamByUser: Record<string, number | null>;
+  setOrganizerTeam: (uid: string, idx: number | null) => void;
+  onSave: () => void;
+  saving: boolean;
+  t: ReturnType<typeof useTranslation>['t'];
+}) {
+  const [openUid, setOpenUid] = useState<string | null>(null);
+
+  const teamOptions: { idx: number | null; label: string }[] = useMemo(
+    () => [
+      { idx: null, label: t('match.teamNone') },
+      ...Array.from({ length: teamCount }, (_, i) => ({
+        idx: i,
+        label: t('match.teamN', { n: String(i + 1) }),
+      })),
+    ],
+    [teamCount, t],
+  );
+
+  return (
+    <View style={orgStyles.section}>
+      <View style={orgStyles.header}>
+        <Ionicons name="people-outline" size={20} color={colors.primary} />
+        <Text style={orgStyles.title}>{t('match.assignTeamsTournamentHint')}</Text>
+      </View>
+
+      {participants.map((p) => {
+        const cur = teamByUser[p.userId] ?? null;
+        const curLabel =
+          cur !== null
+            ? t('match.teamN', { n: String(cur + 1) })
+            : t('match.teamNone');
+        const isOpen = openUid === p.userId;
+
+        return (
+          <View key={p.userId} style={orgStyles.playerCard}>
+            <Pressable
+              style={orgStyles.playerRow}
+              onPress={() => setOpenUid(isOpen ? null : p.userId)}
+            >
+              <View style={orgStyles.playerInfo}>
+                {p.user.profilePicture ? (
+                  <Image
+                    source={{ uri: p.user.profilePicture }}
+                    style={orgStyles.avatar}
+                  />
+                ) : (
+                  <View style={[orgStyles.avatar, orgStyles.avatarPh]}>
+                    <Text style={orgStyles.avatarInitial}>
+                      {p.user.username[0]?.toUpperCase() ?? '?'}
+                    </Text>
+                  </View>
+                )}
+                <Text style={orgStyles.playerName} numberOfLines={1}>
+                  {p.user.username}
+                </Text>
+              </View>
+              <View style={orgStyles.currentTeam}>
+                <Text
+                  style={[
+                    orgStyles.currentTeamText,
+                    cur !== null && orgStyles.currentTeamAssigned,
+                  ]}
+                >
+                  {curLabel}
+                </Text>
+                <Ionicons
+                  name={isOpen ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color={colors.textMuted}
+                />
+              </View>
+            </Pressable>
+
+            {isOpen ? (
+              <View style={orgStyles.dropdown}>
+                {teamOptions.map(({ idx, label }) => {
+                  const selected = cur === idx;
+                  return (
+                    <Pressable
+                      key={String(idx)}
+                      style={[
+                        orgStyles.dropdownItem,
+                        selected && orgStyles.dropdownItemSelected,
+                      ]}
+                      onPress={() => {
+                        setOrganizerTeam(p.userId, idx);
+                        setOpenUid(null);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          orgStyles.dropdownItemText,
+                          selected && orgStyles.dropdownItemTextSelected,
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                      {selected ? (
+                        <Ionicons name="checkmark" size={16} color={colors.primary} />
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+          </View>
+        );
+      })}
+
+      <TouchableOpacity
+        style={[orgStyles.saveBtn, saving && styles.btnDisabled]}
+        onPress={onSave}
+        disabled={saving}
+      >
+        {saving ? (
+          <ActivityIndicator color={colors.white} />
+        ) : (
+          <Text style={orgStyles.saveBtnText}>{t('match.saveManage')}</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const orgStyles = StyleSheet.create({
+  section: {
+    marginTop: spacing.lg,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.text,
+    flex: 1,
+  },
+  playerCard: {
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    overflow: 'hidden',
+  },
+  playerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+  },
+  playerInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minWidth: 0,
+  },
+  avatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  avatarPh: {
+    backgroundColor: colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  avatarInitial: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  playerName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+    flex: 1,
+  },
+  currentTeam: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  currentTeamText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  currentTeamAssigned: {
+    color: colors.primary,
+    fontWeight: '800',
+  },
+  dropdown: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  dropdownItemSelected: {
+    backgroundColor: colors.primary + '14',
+  },
+  dropdownItemText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  dropdownItemTextSelected: {
+    color: colors.primary,
+    fontWeight: '800',
+  },
+  saveBtn: {
+    marginTop: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  saveBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -911,7 +1145,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   teamPick: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  teamPickWrap: { flex: 1, minWidth: 0 },
   tournamentGridCell: {
     width: '100%',
     marginBottom: spacing.sm,

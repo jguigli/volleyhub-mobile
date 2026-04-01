@@ -153,6 +153,54 @@ export function useManageMatch() {
   });
 }
 
+export function useSubmitFixtureScore() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: { fixtureId: string; score: number; matchId: string }) =>
+      matchesApi.submitFixtureScore(args.fixtureId, args.score),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: [MATCHES_KEY, vars.matchId] });
+      queryClient.invalidateQueries({ queryKey: [MATCHES_KEY] });
+    },
+  });
+}
+
+export function useConfirmFixtureScore() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: { fixtureId: string; matchId: string }) =>
+      matchesApi.confirmFixtureScore(args.fixtureId),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: [MATCHES_KEY, vars.matchId] });
+      queryClient.invalidateQueries({ queryKey: [MATCHES_KEY] });
+    },
+  });
+}
+
+export function useOverrideFixtureScore() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (args: {
+      fixtureId: string;
+      matchId: string;
+      scoreA: number;
+      scoreB: number;
+    }) =>
+      matchesApi.overrideFixtureScore(
+        args.fixtureId,
+        args.scoreA,
+        args.scoreB,
+      ),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: [MATCHES_KEY, vars.matchId] });
+      queryClient.invalidateQueries({ queryKey: [MATCHES_KEY] });
+    },
+  });
+}
+
 export function useRemoveParticipant() {
   const queryClient = useQueryClient();
 

@@ -196,6 +196,35 @@ export function MatchDetailScreen({ route, navigation }: Props) {
     };
   }, [livePulse, timingBadgeForPulse]);
 
+  const courtsPulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!match || !isTournamentMatch(match)) return;
+    const isLive =
+      match.status !== 'completed' &&
+      match.status !== 'cancelled' &&
+      Date.now() >= new Date(match.scheduledAt).getTime();
+    if (!isLive) return;
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(courtsPulse, {
+          toValue: 0.3,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(courtsPulse, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [match?.id, match?.status, match?.scheduledAt, courtsPulse]);
+
   if (isLoading) {
     return (
       <View style={styles.centered}>
@@ -580,6 +609,48 @@ export function MatchDetailScreen({ route, navigation }: Props) {
         </View>
       </View>
 
+      {tournament && (timingBadge === 'live' || isCreator) ? (
+        <View style={styles.tournamentActionsRow}>
+          <TouchableOpacity
+            style={styles.tournamentActionBtn}
+            onPress={() => navigation.navigate('TournamentCourts', { matchId })}
+            activeOpacity={0.8}
+          >
+            <Animated.View style={{ opacity: timingBadge === 'live' ? courtsPulse : 1 }}>
+              <Ionicons name="grid-outline" size={20} color={colors.primary} />
+            </Animated.View>
+            <Text style={styles.tournamentActionBtnText}>
+              {t('match.viewTournamentCourts')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.tournamentActionBtn}
+            onPress={() => navigation.navigate('EventScore', { matchId })}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="trophy-outline" size={20} color={colors.primary} />
+            <Text style={styles.tournamentActionBtnText}>
+              {t('match.viewScoreDetail')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {tournament && timingBadge === 'past' && !isCreator ? (
+        <View style={styles.tournamentActionsRow}>
+          <TouchableOpacity
+            style={styles.tournamentActionBtn}
+            onPress={() => navigation.navigate('EventScore', { matchId })}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="trophy-outline" size={20} color={colors.primary} />
+            <Text style={styles.tournamentActionBtnText}>
+              {t('match.viewScoreDetail')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       {user && !isCreator && !isJoinClosed && !isParticipant ? (
         <View style={styles.actionContainer}>
           <TouchableOpacity
@@ -674,6 +745,29 @@ const styles = StyleSheet.create({
   sectionPrimary: {
     padding: spacing.lg,
     gap: spacing.lg,
+  },
+  tournamentActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    marginHorizontal: spacing.xs,
+  },
+  tournamentActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.primary + '44',
+  },
+  tournamentActionBtnText: {
+    ...typography.bodySmall,
+    color: colors.primary,
+    fontWeight: '600',
   },
   detailHeaderRow: {
     flexDirection: 'row',

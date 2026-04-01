@@ -5,6 +5,7 @@ import {
   MatchChatMessage,
   NearbyMatch,
   SkillLevel,
+  TournamentFixture,
   TournamentGame,
   TournamentSystem,
   VolleyType,
@@ -122,6 +123,36 @@ export const matchesApi = {
     },
   ): Promise<Match> => {
     const res = await apiClient.patch<Match>(`/matches/${id}/manage`, body);
+    return res.data;
+  },
+
+  submitFixtureScore: async (
+    fixtureId: string,
+    score: number,
+  ): Promise<TournamentFixture> => {
+    const res = await apiClient.post<TournamentFixture>(
+      `/matches/fixtures/${fixtureId}/score`,
+      { score },
+    );
+    return res.data;
+  },
+
+  confirmFixtureScore: async (fixtureId: string): Promise<TournamentFixture> => {
+    const res = await apiClient.post<TournamentFixture>(
+      `/matches/fixtures/${fixtureId}/confirm`,
+    );
+    return res.data;
+  },
+
+  overrideFixtureScore: async (
+    fixtureId: string,
+    scoreA: number,
+    scoreB: number,
+  ): Promise<TournamentFixture> => {
+    const res = await apiClient.patch<TournamentFixture>(
+      `/matches/fixtures/${fixtureId}/override`,
+      { scoreA, scoreB },
+    );
     return res.data;
   },
 

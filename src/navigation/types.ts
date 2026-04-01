@@ -20,6 +20,7 @@ export type FindStackParamList = {
   MatchTeamsBoard: { matchId: string };
   EventScore: { matchId: string };
   TournamentCourts: { matchId: string };
+  TournamentStandings: { matchId: string };
   MatchChat: { matchId: string };
   MatchParticipants: { matchId: string };
   InvitePlayer: { matchId: string };
@@ -35,6 +36,7 @@ export type MapStackParamList = {
   MatchTeamsBoard: { matchId: string };
   EventScore: { matchId: string };
   TournamentCourts: { matchId: string };
+  TournamentStandings: { matchId: string };
   MatchChat: { matchId: string };
   MatchParticipants: { matchId: string };
   InvitePlayer: { matchId: string };
@@ -49,6 +51,7 @@ export type MyStackParamList = {
   MatchTeamsBoard: { matchId: string };
   EventScore: { matchId: string };
   TournamentCourts: { matchId: string };
+  TournamentStandings: { matchId: string };
   MatchChat: { matchId: string };
   MatchParticipants: { matchId: string };
   InvitePlayer: { matchId: string };
@@ -66,6 +69,7 @@ export type ProfileStackParamList = {
   MatchTeamsBoard: { matchId: string };
   EventScore: { matchId: string };
   TournamentCourts: { matchId: string };
+  TournamentStandings: { matchId: string };
   MatchChat: { matchId: string };
   MatchParticipants: { matchId: string };
   InvitePlayer: { matchId: string };

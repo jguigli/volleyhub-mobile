@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { FindStackParamList } from '../navigation/types';
 import { MatchCard } from '../components/MatchCard';
-import { useNearbyMatches } from '../hooks/useMatches';
+import { useMyMatches, useNearbyMatches } from '../hooks/useMatches';
 import { useLocation } from '../hooks/useLocation';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import type { NearbyMatch, SkillLevel } from '../types';
@@ -67,10 +67,14 @@ export function MatchListScreen({ navigation }: Props) {
     radius: distanceKm === 'all' ? 1000000 : distanceKm * 1000,
     skillLevel: skillFilter !== 'all' ? skillFilter : undefined,
   });
+  const myMatchesQuery = useMyMatches();
 
   const rawMatches = nearbyQuery.data ?? [];
+  const myMatchIds = new Set((myMatchesQuery.data ?? []).map((m) => m.id));
   const now = Date.now();
   const matches = rawMatches.filter((m) => {
+    if (myMatchIds.has(m.id)) return false;
+
     if (formatFilter !== 'all') {
       const isTournament = m.event_format === 'tournament';
       if (formatFilter === 'tournament' && !isTournament) return false;

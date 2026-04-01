@@ -1,11 +1,12 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PlayerCountBadge } from './PlayerCountBadge';
 import { SkillBadge } from './SkillBadge';
 import { localeToBcp47, useTranslation } from '../i18n';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import { isTournamentMatch, matchCardVenuePlace } from '../utils/matchDisplay';
+import { useAuthStore } from '../store/auth.store';
 import type { NearbyMatch } from '../types';
 
 interface Props {
@@ -30,6 +31,40 @@ export function MatchBottomSheet({
   const localeTag = localeToBcp47(locale);
   const venueLine = matchCardVenuePlace(match);
   const tournament = isTournamentMatch(match);
+  const currentUser = useAuthStore((s) => s.user);
+  const isCreator = currentUser?.id === match.creator_id;
+
+  const scheduledMs = new Date(match.scheduled_at).getTime();
+  const isPast =
+    match.status === 'completed' || match.status === 'cancelled';
+  const isLive = !isPast && Date.now() >= scheduledMs;
+  const isUpcoming = !isPast && !isLive;
+
+  const borderPulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!tournament || !isLive) {
+      borderPulse.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(borderPulse, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        }),
+        Animated.timing(borderPulse, {
+          toValue: 0,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [tournament, isLive, borderPulse]);
 
   const volleyLabel =
     match.volley_type === 'beach'
@@ -142,7 +177,7 @@ export function MatchBottomSheet({
             <Text style={styles.actionIconText}>{t('match.viewTeamsBoard')}</Text>
           </TouchableOpacity>
         ) : null}
-        {onScorePress ? (
+        {onScorePress && (!isUpcoming || isCreator) ? (
           <TouchableOpacity
             style={styles.actionIconBtn}
             onPress={onScorePress}
@@ -152,14 +187,26 @@ export function MatchBottomSheet({
             <Text style={styles.actionIconText}>{t('match.scoreButton')}</Text>
           </TouchableOpacity>
         ) : null}
-        {tournament && onCourtsPress ? (
+        {tournament && onCourtsPress && (isLive || isCreator) ? (
           <TouchableOpacity
-            style={styles.actionIconBtn}
             onPress={onCourtsPress}
             activeOpacity={0.8}
           >
-            <Ionicons name="grid-outline" size={24} color={colors.primary} />
-            <Text style={styles.actionIconText}>{t('match.viewTournamentCourts')}</Text>
+            <Animated.View
+              style={[
+                styles.actionIconBtn,
+                isLive && {
+                  borderColor: borderPulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [colors.primary + '55', colors.primary],
+                  }),
+                  borderWidth: 2,
+                },
+              ]}
+            >
+              <Ionicons name="grid-outline" size={24} color={colors.primary} />
+              <Text style={styles.actionIconText}>{t('match.viewTournamentCourts')}</Text>
+            </Animated.View>
           </TouchableOpacity>
         ) : null}
       </View>

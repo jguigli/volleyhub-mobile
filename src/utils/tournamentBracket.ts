@@ -9,6 +9,8 @@ export function normalizeTournamentGames(
     teamBIndex: Number(g.teamBIndex ?? -1),
     scoreA: Number(g.scoreA ?? 0),
     scoreB: Number(g.scoreB ?? 0),
+    scoreAConfirmed: Boolean(g.scoreAConfirmed),
+    scoreBConfirmed: Boolean(g.scoreBConfirmed),
     courtIndex: g.courtIndex != null ? Number(g.courtIndex) : 0,
     round: g.round != null ? Number(g.round) : 0,
     order: g.order != null ? Number(g.order) : i,

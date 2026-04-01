@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,46 +9,23 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { MatchesStackParamList } from '../navigation/types';
+import { FindStackParamList, MatchesStackParamList } from '../navigation/types';
 import { useManageMatch, useMatch } from '../hooks/useMatches';
 import { useAuthStore } from '../store/auth.store';
 import { useTranslation } from '../i18n';
 import { countSetsWonFromScores, isTournamentMatch } from '../utils/matchDisplay';
-import {
-  buildDefaultTournamentFirstRound,
-  normalizeTournamentGames,
-} from '../utils/tournamentBracket';
-import {
-  formatTournamentPhase,
-  tournamentPhaseSortKey,
-} from '../utils/tournamentPhaseLabel';
 import { colors, spacing, borderRadius, typography, shadows } from '../theme';
-import type { TournamentGame } from '../types';
 import { MatchScoreSummary } from '../components/MatchScoreSummary';
+import { TournamentScoreRecap } from '../components/tournament/TournamentScoreRecap';
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'EventScore'>;
 
 type SetRow = { teamA: string; teamB: string };
-
-type TourneyEditRow = {
-  id: string;
-  fixtureId?: string;
-  phase?: string | null;
-  status?: TournamentGame['status'];
-  round: number;
-  order: number;
-  courtIndex: number;
-  teamAIndex: string;
-  teamBIndex: string;
-  scoreA: string;
-  scoreB: string;
-};
-
-function newRowId(): string {
-  return `t-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
 
 function parseScore(s: string): number {
   const n = Number.parseInt(s.trim(), 10);
@@ -66,100 +43,11 @@ function parseScoreWithMax(s: string, maxPoints: number): number {
   return n;
 }
 
-function parseScoreTournament(s: string): number {
-  const t = s.trim();
-  if (t === '') return 0;
-  return parseScore(t);
-}
-
 function parseSetRowPair(row: SetRow): { teamA: number; teamB: number } | null {
   try {
     return { teamA: parseScore(row.teamA), teamB: parseScore(row.teamB) };
   } catch {
     return null;
-  }
-}
-
-function gamesToEditRows(
-  games: TournamentGame[],
-  courtCap: number,
-): TourneyEditRow[] {
-  const cap = Math.max(1, courtCap);
-  return games.map((g, i) => {
-    const ta = g.teamAIndex ?? -1;
-    const tb = g.teamBIndex ?? -1;
-    return {
-      id: g.fixtureId ?? newRowId(),
-      fixtureId: g.fixtureId,
-      phase: g.phase ?? null,
-      status: g.status,
-      round: g.round ?? 0,
-      order: g.order ?? i,
-      courtIndex: Math.min(Math.max(0, g.courtIndex ?? 0), cap - 1),
-      teamAIndex: ta < 0 ? '' : String(ta + 1),
-      teamBIndex: tb < 0 ? '' : String(tb + 1),
-      scoreA: String(g.scoreA ?? 0),
-      scoreB: String(g.scoreB ?? 0),
-    };
-  });
-}
-
-function parseEditRowToGame(
-  row: TourneyEditRow,
-  teamCount: number,
-  maxCourts: number,
-): TournamentGame | null {
-  try {
-    const parseTeamIdx = (s: string): number | null => {
-      const t = s.trim();
-      if (t === '') return -1;
-      const n = Number.parseInt(t, 10);
-      if (!Number.isFinite(n) || n < 1 || n > teamCount) return null;
-      return n - 1;
-    };
-    const ai = parseTeamIdx(row.teamAIndex);
-    const bi = parseTeamIdx(row.teamBIndex);
-    if (ai === null || bi === null) return null;
-    if (ai === -1 && bi === -1) return null;
-    if (ai >= 0 && bi >= 0 && ai === bi) return null;
-
-    let ci = Number(row.courtIndex);
-    if (!Number.isFinite(ci)) ci = 0;
-    ci = Math.max(0, Math.min(maxCourts - 1, Math.floor(ci)));
-
-    const game: TournamentGame = {
-      teamAIndex: ai,
-      teamBIndex: bi,
-      scoreA: parseScoreTournament(row.scoreA),
-      scoreB: parseScoreTournament(row.scoreB),
-      courtIndex: ci,
-      round: row.round,
-      order: row.order,
-    };
-    if (row.fixtureId) {
-      game.fixtureId = row.fixtureId;
-    }
-    return game;
-  } catch {
-    return null;
-  }
-}
-
-function tournamentStatusLabel(
-  t: (key: string) => string,
-  s: TournamentGame['status'] | undefined,
-): string {
-  switch (s) {
-    case 'pending':
-      return t('match.fixtureStatusPending');
-    case 'ready':
-      return t('match.fixtureStatusReady');
-    case 'live':
-      return t('match.fixtureStatusLive');
-    case 'finished':
-      return t('match.fixtureStatusFinished');
-    default:
-      return '';
   }
 }
 
@@ -171,7 +59,6 @@ export function EventScoreScreen({ route, navigation }: Props) {
   const manageMut = useManageMatch();
 
   const [setRows, setSetRows] = useState<SetRow[]>([]);
-  const [tourneyRows, setTourneyRows] = useState<TourneyEditRow[]>([]);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -183,16 +70,7 @@ export function EventScoreScreen({ route, navigation }: Props) {
       return;
     }
     if (isTournamentMatch(match)) {
-      const cc = match.tournamentCourtCount ?? 1;
-      const tc = Math.max(2, match.teamCount ?? 2);
-      const raw = match.tournamentGames ?? [];
-      const normalized = normalizeTournamentGames(raw);
-      if (normalized.length > 0) {
-        setTourneyRows(gamesToEditRows(normalized, cc));
-      } else {
-        const def = buildDefaultTournamentFirstRound(tc, cc);
-        setTourneyRows(gamesToEditRows(def, cc));
-      }
+      // Recap reads live from `match` via React Query.
     } else {
       const persisted = match.setScores ?? [];
       const minRows = Math.max(persisted.length, match.matchSets ?? 0, 1);
@@ -210,7 +88,6 @@ export function EventScoreScreen({ route, navigation }: Props) {
 
   const canManage = Boolean(match && currentUser?.id === match.creatorId);
   const tournament = match ? isTournamentMatch(match) : false;
-  const teamCount = match?.teamCount ?? 0;
   const courtCount = Math.max(1, match?.tournamentCourtCount ?? 1);
   const totalSets = Math.max(1, match?.matchSets ?? 3);
   const setsToWin = Math.floor(totalSets / 2) + 1;
@@ -263,67 +140,33 @@ export function EventScoreScreen({ route, navigation }: Props) {
     );
   }, [lockRowsFromIndex]);
 
-  const sortedTourneyRows = useMemo(() => {
-    return [...tourneyRows].sort((a, b) => {
-      const pa = tournamentPhaseSortKey(a.phase);
-      const pb = tournamentPhaseSortKey(b.phase);
-      if (pa !== pb) return pa - pb;
-      if (a.round !== b.round) return a.round - b.round;
-      if (a.order !== b.order) return a.order - b.order;
-      return a.courtIndex - b.courtIndex;
-    });
-  }, [tourneyRows]);
-
-  const hasServerFixtures = useMemo(
-    () => tourneyRows.some((r) => Boolean(r.fixtureId)),
-    [tourneyRows],
-  );
-
   useLayoutEffect(() => {
     if (!match) return;
     if (isTournamentMatch(match)) {
-      navigation.setOptions({ title: t('match.tournamentScoresScreenTitle') });
+      navigation.setOptions({
+        title: t('match.tournamentScoresScreenTitle'),
+        headerRight: () => (
+          <TouchableOpacity
+            onPress={() => {
+              (navigation as NativeStackNavigationProp<FindStackParamList>).navigate(
+                'TournamentStandings',
+                { matchId },
+              );
+            }}
+            style={{ paddingRight: 16 }}
+            accessibilityRole="button"
+          >
+            <Ionicons name="podium-outline" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        ),
+      });
     } else {
-      navigation.setOptions({ title: t('match.viewScoreDetail') });
+      navigation.setOptions({
+        title: t('match.viewScoreDetail'),
+        headerRight: undefined,
+      });
     }
-  }, [match, navigation, t]);
-
-  const resetBracket = useCallback(() => {
-    if (!match || !isTournamentMatch(match)) return;
-    const cc = match.tournamentCourtCount ?? 1;
-    const tc = Math.max(2, match.teamCount ?? 2);
-    const def = buildDefaultTournamentFirstRound(tc, cc);
-    setTourneyRows(gamesToEditRows(def, cc));
-  }, [match]);
-
-  const updateTourneyRow = useCallback((id: string, patch: Partial<TourneyEditRow>) => {
-    setTourneyRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  }, []);
-
-  const onTourneyField = useCallback(
-    (id: string, field: keyof TourneyEditRow, val: string) => {
-      const cleaned =
-        field === 'scoreA' || field === 'scoreB'
-          ? val.replace(/[^\d]/g, '')
-          : field === 'courtIndex'
-            ? val.replace(/[^\d]/g, '')
-            : val.replace(/[^\d]/g, '');
-      setTourneyRows((prev) =>
-        prev.map((r) => {
-          if (r.id !== id) return r;
-          if (field === 'courtIndex') {
-            const n = Number.parseInt(cleaned, 10);
-            const idx = Number.isFinite(n)
-              ? Math.max(0, Math.min(courtCount - 1, n - 1))
-              : r.courtIndex;
-            return { ...r, courtIndex: idx };
-          }
-          return { ...r, [field]: cleaned };
-        }),
-      );
-    },
-    [courtCount],
-  );
+  }, [match, navigation, matchId, t]);
 
   const onSetChange = (index: number, side: 'teamA' | 'teamB', val: string) => {
     const onlyDigits = val.replace(/[^\d]/g, '');
@@ -346,39 +189,6 @@ export function EventScoreScreen({ route, navigation }: Props) {
     if (!match) return;
     if (!canManage) {
       Alert.alert(t('common.error'), t('match.manageUnauthorized'));
-      return;
-    }
-
-    if (tournament) {
-      if (teamCount < 2) {
-        Alert.alert(t('common.error'), t('match.loadFailed'));
-        return;
-      }
-      const sorted = [...tourneyRows].sort((a, b) => {
-        if (a.round !== b.round) return a.round - b.round;
-        if (a.courtIndex !== b.courtIndex) return a.courtIndex - b.courtIndex;
-        return a.order - b.order;
-      });
-      const games: TournamentGame[] = [];
-      for (let i = 0; i < sorted.length; i += 1) {
-        const g = parseEditRowToGame(sorted[i], teamCount, courtCount);
-        if (!g) {
-          Alert.alert(t('common.error'), t('match.invalidTournamentScores'));
-          return;
-        }
-        games.push({ ...g, order: i });
-      }
-      try {
-        await manageMut.mutateAsync({
-          matchId: match.id,
-          tournamentGames: games,
-        });
-        Alert.alert('', t('match.manageSaved'));
-        navigation.goBack();
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : t('match.manageFailed');
-        Alert.alert(t('common.error'), msg);
-      }
       return;
     }
 
@@ -448,182 +258,29 @@ export function EventScoreScreen({ route, navigation }: Props) {
   }
 
   if (tournament) {
-    const structureLocked = hasServerFixtures;
-
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <View style={styles.section}>
-          <MatchScoreSummary match={match} embedded />
-          <Text style={styles.sectionTitle}>{t('match.tournamentMatchListTitle')}</Text>
-          <Text style={styles.tourneyMeta}>{t('match.tournamentMatchOrderHint')}</Text>
-          <Text style={styles.tourneyMeta}>
-            {t('match.tournamentPointsTarget', {
-              pts: String(match.tournamentPointsPerMatch ?? '—'),
-            })}
-          </Text>
-          <Text style={styles.tourneyMeta}>
-            {t('match.tournamentCourtsMeta', { n: String(courtCount) })}
-          </Text>
-
-          {!canManage ? (
-            <Text style={styles.readOnlyHint}>{t('match.scoreReadOnlyHint')}</Text>
-          ) : null}
-          {canManage && structureLocked ? (
-            <Text style={styles.readOnlyHint}>{t('match.tournamentScoresManagedHint')}</Text>
-          ) : null}
-
-          {canManage && !hasServerFixtures ? (
-            <TouchableOpacity style={styles.resetBtn} onPress={resetBracket}>
-              <Ionicons name="refresh-outline" size={20} color={colors.primary} />
-              <Text style={styles.resetBtnText}>{t('match.resetTournamentBracket')}</Text>
-            </TouchableOpacity>
-          ) : null}
-
-          <View style={styles.tMatchList}>
-            {sortedTourneyRows.map((row, idx) => {
-              const phaseLabel = formatTournamentPhase(t, row.phase);
-              const statusTxt = tournamentStatusLabel(t, row.status);
-              const ta = row.teamAIndex.trim()
-                ? t('match.teamN', { n: row.teamAIndex })
-                : t('match.teamTbd');
-              const tb = row.teamBIndex.trim()
-                ? t('match.teamN', { n: row.teamBIndex })
-                : t('match.teamTbd');
-              const statusStyle =
-                row.status === 'live'
-                  ? styles.tStatusPillLive
-                  : row.status === 'ready'
-                    ? styles.tStatusPillReady
-                    : row.status === 'finished'
-                      ? styles.tStatusPillDone
-                      : styles.tStatusPillPending;
-
-              return (
-                <View key={row.id} style={styles.tMatchCard}>
-                  <View style={styles.tMatchCardHeader}>
-                    <Text style={styles.tMatchIndex}>#{idx + 1}</Text>
-                    <View style={styles.tMatchBadges}>
-                      {phaseLabel ? (
-                        <View style={styles.tPhasePill}>
-                          <Text style={styles.tPhasePillText}>{phaseLabel}</Text>
-                        </View>
-                      ) : null}
-                      {statusTxt ? (
-                        <View style={[styles.tStatusPill, statusStyle]}>
-                          <Text style={styles.tStatusPillText}>{statusTxt}</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  </View>
-                  <Text style={styles.tMatchSubline}>
-                    {t('match.tournamentRoundTitle', { n: String(row.round + 1) })}
-                    {' · '}
-                    {t('match.courtN', { n: String(row.courtIndex + 1) })}
-                  </Text>
-
-                  {structureLocked ? (
-                    <View style={styles.tTeamsReadonly}>
-                      <Text style={styles.tTeamName} numberOfLines={1}>
-                        {ta}
-                      </Text>
-                      <Text style={styles.tVs}>vs</Text>
-                      <Text style={styles.tTeamName} numberOfLines={1}>
-                        {tb}
-                      </Text>
-                    </View>
-                  ) : (
-                    <View style={styles.tourneyInputs}>
-                      <View style={styles.tourneyPair}>
-                        <Text style={styles.tourneyFieldLbl}>{t('match.teamA')}</Text>
-                        <TextInput
-                          style={[
-                            styles.tourneyInput,
-                            !canManage && styles.scoreInputReadOnly,
-                          ]}
-                          keyboardType="number-pad"
-                          editable={canManage}
-                          value={row.teamAIndex}
-                          onChangeText={(v) => onTourneyField(row.id, 'teamAIndex', v)}
-                          placeholder={t('match.teamTbdShort')}
-                          placeholderTextColor={colors.textMuted}
-                        />
-                      </View>
-                      <Text style={styles.tourneyVs}>vs</Text>
-                      <View style={styles.tourneyPair}>
-                        <Text style={styles.tourneyFieldLbl}>{t('match.teamB')}</Text>
-                        <TextInput
-                          style={[
-                            styles.tourneyInput,
-                            !canManage && styles.scoreInputReadOnly,
-                          ]}
-                          keyboardType="number-pad"
-                          editable={canManage}
-                          value={row.teamBIndex}
-                          onChangeText={(v) => onTourneyField(row.id, 'teamBIndex', v)}
-                          placeholder={t('match.teamTbdShort')}
-                          placeholderTextColor={colors.textMuted}
-                        />
-                      </View>
-                    </View>
-                  )}
-
-                  <View style={styles.tourneyScoreRow}>
-                    <TextInput
-                      style={[styles.scoreInput, !canManage && styles.scoreInputReadOnly]}
-                      keyboardType="number-pad"
-                      editable={canManage}
-                      value={row.scoreA}
-                      onChangeText={(v) => onTourneyField(row.id, 'scoreA', v)}
-                      placeholder="0"
-                      placeholderTextColor={colors.textMuted}
-                    />
-                    <Text style={styles.setDash}>—</Text>
-                    <TextInput
-                      style={[styles.scoreInput, !canManage && styles.scoreInputReadOnly]}
-                      keyboardType="number-pad"
-                      editable={canManage}
-                      value={row.scoreB}
-                      onChangeText={(v) => onTourneyField(row.id, 'scoreB', v)}
-                      placeholder="0"
-                      placeholderTextColor={colors.textMuted}
-                    />
-                  </View>
-
-                  {!structureLocked ? (
-                    <View style={styles.courtRow}>
-                      <Text style={styles.courtRowLbl}>{t('match.courtNShort')}</Text>
-                      <TextInput
-                        style={[styles.courtInput, !canManage && styles.scoreInputReadOnly]}
-                        keyboardType="number-pad"
-                        editable={canManage}
-                        value={String(row.courtIndex + 1)}
-                        onChangeText={(v) => onTourneyField(row.id, 'courtIndex', v)}
-                        placeholder="1"
-                        placeholderTextColor={colors.textMuted}
-                      />
-                    </View>
-                  ) : null}
-                </View>
-              );
-            })}
+        {/* Tournament info header */}
+        <View style={styles.tourneyInfoCard}>
+          <View style={styles.tourneyInfoRow}>
+            <View style={styles.tourneyInfoItem}>
+              <Ionicons name="fitness-outline" size={16} color={colors.primary} />
+              <Text style={styles.tourneyInfoValue}>
+                {String(match.tournamentPointsPerMatch ?? '—')} pts
+              </Text>
+            </View>
+            <View style={styles.tourneyInfoSep} />
+            <View style={styles.tourneyInfoItem}>
+              <Ionicons name="grid-outline" size={16} color={colors.primary} />
+              <Text style={styles.tourneyInfoValue}>
+                {t('match.tournamentCourtsMeta', { n: String(courtCount) })}
+              </Text>
+            </View>
           </View>
         </View>
 
-        {canManage ? (
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.primaryBtn, manageMut.isPending && styles.btnDisabled]}
-              onPress={handleSave}
-              disabled={manageMut.isPending}
-            >
-              {manageMut.isPending ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <Text style={styles.primaryBtnText}>{t('match.saveManage')}</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        ) : null}
+        {/* Bracket / matches recap */}
+        <TournamentScoreRecap match={match} t={t} />
       </ScrollView>
     );
   }
@@ -719,7 +376,12 @@ export function EventScoreScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { paddingBottom: 32 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
   errorText: { ...typography.body, color: colors.error },
   section: {
     margin: spacing.md,
@@ -732,6 +394,38 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   sectionTitle: { ...typography.h3, fontSize: 17, marginBottom: spacing.md },
+  tourneyInfoCard: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tourneyInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tourneyInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  tourneyInfoValue: {
+    ...typography.bodySmall,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  tourneyInfoSep: {
+    width: 1,
+    height: 16,
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.md,
+  },
   tourneyMeta: {
     ...typography.bodySmall,
     color: colors.textSecondary,
@@ -842,48 +536,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   secondaryBtnText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
-  courtBlock: {
-    marginTop: spacing.md,
-    paddingTop: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  courtBlockTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.primary,
-    marginBottom: spacing.xs,
-    textTransform: 'uppercase',
-  },
-  courtSummaryRow: { paddingVertical: 4 },
-  courtSummaryText: { ...typography.bodySmall, color: colors.text },
-  tourneyInputs: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  tourneyPair: { flex: 1, gap: 4 },
-  tourneyFieldLbl: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  tourneyInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.sm,
-    textAlign: 'center',
-    color: colors.text,
-    backgroundColor: colors.card,
-    fontWeight: '600',
-  },
-  tourneyVs: { ...typography.bodySmall, color: colors.textMuted, paddingTop: 18 },
-  tourneyScoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
   readOnlyHint: {
     ...typography.bodySmall,
     color: colors.textSecondary,
