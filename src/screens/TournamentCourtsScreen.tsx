@@ -142,6 +142,19 @@ export function TournamentCourtsScreen({ route }: Props) {
   }
 
   const showLegacyHint = games.length > 0 && !hasServerFixtures;
+  const noGames = games.length === 0;
+  const isMatchCompleted = match.status === 'completed';
+
+  if (noGames && isMatchCompleted) {
+    return (
+      <View style={styles.centered}>
+        <Ionicons name="alert-circle-outline" size={32} color={colors.error} />
+        <Text style={styles.notEnoughText}>
+          {t('match.tournamentNotEnoughTeams')}
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -514,6 +527,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   error: { ...typography.body, color: colors.error },
+  notEnoughText: {
+    ...typography.body,
+    color: colors.error,
+    textAlign: 'center',
+    fontWeight: '600',
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
 
   /* ── Info bar ── */
   infoBar: {

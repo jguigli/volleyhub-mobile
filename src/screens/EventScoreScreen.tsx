@@ -181,10 +181,6 @@ export function EventScoreScreen({ route, navigation }: Props) {
     );
   };
 
-  const addSet = () => {
-    setSetRows((prev) => [...prev, { teamA: '', teamB: '' }]);
-  };
-
   const handleSave = async () => {
     if (!match) return;
     if (!canManage) {
@@ -258,29 +254,40 @@ export function EventScoreScreen({ route, navigation }: Props) {
   }
 
   if (tournament) {
+    const noGames = !match.tournamentGames?.length;
+    const isCompleted = match.status === 'completed';
+
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* Tournament info header */}
-        <View style={styles.tourneyInfoCard}>
-          <View style={styles.tourneyInfoRow}>
-            <View style={styles.tourneyInfoItem}>
-              <Ionicons name="scan-outline" size={16} color={colors.primary} />
-              <Text style={styles.tourneyInfoValue}>
-                {String(match.tournamentPointsPerMatch ?? '—')} pts
-              </Text>
-            </View>
-            <View style={styles.tourneyInfoSep} />
-            <View style={styles.tourneyInfoItem}>
-              <Ionicons name="grid-outline" size={16} color={colors.primary} />
-              <Text style={styles.tourneyInfoValue}>
-                {t('match.tournamentCourtsMeta', { n: String(courtCount) })}
-              </Text>
-            </View>
+        {noGames && isCompleted ? (
+          <View style={styles.notEnoughTeamsCard}>
+            <Ionicons name="alert-circle-outline" size={32} color={colors.error} />
+            <Text style={styles.notEnoughTeamsText}>
+              {t('match.tournamentNotEnoughTeams')}
+            </Text>
           </View>
-        </View>
-
-        {/* Bracket / matches recap */}
-        <TournamentScoreRecap match={match} t={t} />
+        ) : (
+          <>
+            <View style={styles.tourneyInfoCard}>
+              <View style={styles.tourneyInfoRow}>
+                <View style={styles.tourneyInfoItem}>
+                  <Ionicons name="scan-outline" size={16} color={colors.primary} />
+                  <Text style={styles.tourneyInfoValue}>
+                    {String(match.tournamentPointsPerMatch ?? '—')} pts
+                  </Text>
+                </View>
+                <View style={styles.tourneyInfoSep} />
+                <View style={styles.tourneyInfoItem}>
+                  <Ionicons name="grid-outline" size={16} color={colors.primary} />
+                  <Text style={styles.tourneyInfoValue}>
+                    {t('match.tournamentCourtsMeta', { n: String(courtCount) })}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <TournamentScoreRecap match={match} t={t} />
+          </>
+        )}
       </ScrollView>
     );
   }
@@ -346,12 +353,6 @@ export function EventScoreScreen({ route, navigation }: Props) {
           <Text style={styles.totalSetsValue}>{String(previewSetsWon.teamB)}</Text>
         </View>
 
-        {canManage ? (
-          <TouchableOpacity style={styles.addSetButton} onPress={addSet}>
-            <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-            <Text style={styles.addSetText}>{t('match.addSet')}</Text>
-          </TouchableOpacity>
-        ) : null}
       </View>
 
       {canManage ? (
@@ -394,6 +395,22 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   sectionTitle: { ...typography.h3, fontSize: 17, marginBottom: spacing.md },
+  notEnoughTeamsCard: {
+    margin: spacing.md,
+    padding: spacing.xl,
+    alignItems: 'center',
+    gap: spacing.md,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.error + '44',
+  },
+  notEnoughTeamsText: {
+    ...typography.body,
+    color: colors.error,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
   tourneyInfoCard: {
     marginHorizontal: spacing.md,
     marginTop: spacing.md,
@@ -608,14 +625,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
   },
-  addSetButton: {
-    marginTop: spacing.md,
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  addSetText: { color: colors.primary, fontWeight: '600' },
   actions: { margin: spacing.md, marginBottom: 0 },
   primaryBtn: {
     backgroundColor: colors.primary,

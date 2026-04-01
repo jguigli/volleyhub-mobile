@@ -64,6 +64,7 @@ export function useMapViewDarkModeProps(): {
   };
   /** Pour `key` sur `MapView` si le style natif ne se met pas à jour (ex. Android). */
   mapThemeKey: string;
+  isDark: boolean;
 } {
   const scheme = useColorScheme();
   const preference = useMapAppearanceStore((s) => s.mapAppearance);
@@ -80,5 +81,6 @@ export function useMapViewDarkModeProps(): {
         : {}),
     },
     mapThemeKey: `${preference}-${scheme ?? 'default'}`,
+    isDark: useDarkMap,
   };
 }

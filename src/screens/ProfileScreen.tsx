@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: spacing.sm + 4,
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
   },
   statsModeChipActive: {
     borderColor: colors.primary,

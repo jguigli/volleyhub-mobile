@@ -22,6 +22,7 @@ import { navigateToUserProfile } from '../navigation/navigateToUserProfile';
 import { useAuthStore } from '../store/auth.store';
 import { useTranslation } from '../i18n';
 import { colors, spacing, borderRadius, typography } from '../theme';
+import { useBottomInset } from '../hooks/useBottomInset';
 import type { IncomingFollowRequestItem } from '../api/users.api';
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications';
 
@@ -33,6 +34,7 @@ type RowItem =
 
 export function NotificationsScreen({ navigation }: Props) {
   const { t, locale } = useTranslation();
+  const bottomInset = useBottomInset();
   const currentUser = useAuthStore((s) => s.user);
   const { data, isLoading, refetch, isFetching } = useIncomingFollowRequests();
   const invitesQ = useIncomingEventInvites({ enabled: !!currentUser });
@@ -204,7 +206,7 @@ export function NotificationsScreen({ navigation }: Props) {
           void refetch();
           void invitesQ.refetch();
         }}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: bottomInset }]}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="notifications-off-outline" size={56} color={colors.textMuted} />
@@ -229,7 +231,6 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: spacing.md,
-    paddingBottom: 40,
   },
   row: {
     flexDirection: 'row',

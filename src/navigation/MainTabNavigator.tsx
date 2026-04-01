@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, View, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -118,6 +118,11 @@ function FindNavigator() {
         component={UserProfileScreen}
         options={{ title: t('nav.profile') }}
       />
+      <FindStack.Screen
+        name="Connections"
+        component={ConnectionsScreen}
+        options={{ title: t('nav.followers') }}
+      />
     </FindStack.Navigator>
   );
 }
@@ -212,6 +217,11 @@ function MapNavigator() {
         component={UserProfileScreen}
         options={{ headerShown: true, title: t('nav.profile') }}
       />
+      <MapStack.Screen
+        name="Connections"
+        component={ConnectionsScreen}
+        options={{ headerShown: true, title: t('nav.followers') }}
+      />
     </MapStack.Navigator>
   );
 }
@@ -288,6 +298,11 @@ function MyNavigator() {
         name="UserProfile"
         component={UserProfileScreen}
         options={{ title: t('nav.profile') }}
+      />
+      <MyStack.Screen
+        name="Connections"
+        component={ConnectionsScreen}
+        options={{ title: t('nav.followers') }}
       />
     </MyStack.Navigator>
   );
@@ -398,8 +413,8 @@ export function MainTabNavigator() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          paddingBottom: 6,
-          height: 56,
+          paddingTop: 6,
+          minHeight: 56,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
@@ -417,15 +432,7 @@ export function MainTabNavigator() {
           }
 
           if (route.name === 'MapTab') {
-            return (
-              <View style={[styles.mapTabIcon, focused && styles.mapTabIconActive]}>
-                <Ionicons
-                  name={iconName}
-                  size={size - 2}
-                  color={focused ? colors.white : color}
-                />
-              </View>
-            );
+            return <Ionicons name={iconName} size={size} color={color} />;
           }
           if (route.name === 'ProfileTab') {
             return (
@@ -448,12 +455,12 @@ export function MainTabNavigator() {
       <Tab.Screen
         name="MapTab"
         component={MapNavigator}
-        options={{ tabBarAccessibilityLabel: t('tabs.map'), unmountOnBlur: true }}
+        options={{ tabBarAccessibilityLabel: t('tabs.map') }}
       />
       <Tab.Screen
         name="MyTab"
         component={MyNavigator}
-        options={{ tabBarAccessibilityLabel: t('tabs.myMatches'), unmountOnBlur: true }}
+        options={{ tabBarAccessibilityLabel: t('tabs.myMatches') }}
       />
       <Tab.Screen
         name="ProfileTab"
@@ -465,16 +472,6 @@ export function MainTabNavigator() {
 }
 
 const styles = StyleSheet.create({
-  mapTabIcon: {
-    width: 40,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mapTabIconActive: {
-    backgroundColor: colors.primary,
-  },
   profileTabIconWrap: {
     alignItems: 'center',
     justifyContent: 'center',

@@ -20,11 +20,13 @@ import { useAuthStore } from '../store/auth.store';
 import { useTranslation } from '../i18n';
 import { isTournamentMatch } from '../utils/matchDisplay';
 import { colors, spacing, borderRadius, typography, shadows } from '../theme';
+import { useBottomInset } from '../hooks/useBottomInset';
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'MatchSettings'>;
 
 export function MatchSettingsScreen({ route, navigation }: Props) {
   const { matchId } = route.params;
+  const bottomInset = useBottomInset();
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const { data: match, isLoading, error } = useMatch(matchId);
@@ -110,7 +112,7 @@ export function MatchSettingsScreen({ route, navigation }: Props) {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
       showsVerticalScrollIndicator={false}
     >
       <Text style={styles.intro}>{t('match.matchSettingsIntro')}</Text>
@@ -178,7 +180,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.md,
-    paddingBottom: 40,
     gap: spacing.md,
   },
   centered: {

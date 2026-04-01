@@ -14,11 +14,13 @@ import { useAuthStore } from '../store/auth.store';
 import { useMapAppearanceStore } from '../store/mapAppearance.store';
 import { useTranslation } from '../i18n';
 import { colors, spacing, borderRadius, typography } from '../theme';
+import { useBottomInset } from '../hooks/useBottomInset';
 import type { ProfileStackParamList } from '../navigation/types';
 
 export function SettingsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
+  const bottomInset = useBottomInset();
   const { clearAuth } = useAuthStore();
   const { t, locale, setLocale } = useTranslation();
   const mapAppearance = useMapAppearanceStore((s) => s.mapAppearance);
@@ -90,7 +92,7 @@ export function SettingsScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.card}>
@@ -156,7 +158,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.md,
-    paddingBottom: 40,
     gap: spacing.lg,
   },
   card: {

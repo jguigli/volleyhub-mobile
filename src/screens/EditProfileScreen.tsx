@@ -25,6 +25,7 @@ import { USERS_KEY } from '../hooks/useUsers';
 import { SkillBadge } from '../components/SkillBadge';
 import { useTranslation } from '../i18n';
 import { colors, spacing, borderRadius, typography } from '../theme';
+import { useBottomInset } from '../hooks/useBottomInset';
 import type { League, SkillLevel, Position, User } from '../types';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'EditProfile'>;
@@ -64,6 +65,7 @@ function applyUserToForm(user: User) {
 
 export function EditProfileScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const bottomInset = useBottomInset();
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
@@ -210,7 +212,7 @@ export function EditProfileScreen({ navigation }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: bottomInset }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -374,7 +376,6 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: spacing.md,
-    paddingBottom: 40,
   },
   label: {
     ...typography.bodySmall,

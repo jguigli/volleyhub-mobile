@@ -39,6 +39,7 @@ import {
   typography,
   useMapViewDarkModeProps,
 } from '../theme';
+import { useBottomInset } from '../hooks/useBottomInset';
 import type { SkillLevel, Court, TournamentSystem } from '../types';
 import { formatMatchCoords } from '../utils/matchDisplay';
 
@@ -79,18 +80,22 @@ const TOURNAMENT_COURT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as cons
 const TOURNAMENT_SYSTEM_DEFS: ReadonlyArray<{
   value: TournamentSystem;
   titleKey: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
 }> = [
   {
     value: 'single_elimination',
     titleKey: 'createMatch.tournamentSystemSingleElimTitle',
+    icon: 'git-branch-outline',
   },
   {
     value: 'pools_finals',
     titleKey: 'createMatch.tournamentSystemPoolsTitle',
+    icon: 'layers-outline',
   },
   {
     value: 'round_robin',
     titleKey: 'createMatch.tournamentSystemRoundRobinTitle',
+    icon: 'repeat-outline',
   },
 ];
 
@@ -184,8 +189,7 @@ function teamSizeOptionsForVolley(
 
 function formatDateTimeLocal(date: Date, localeTag: string): string {
   return date.toLocaleDateString(localeTag, {
-    weekday: 'short',
-    month: 'short',
+    month: 'long',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
@@ -198,6 +202,7 @@ function addHours(date: Date, hours: number): Date {
 
 export function CreateMatchScreen({ navigation, route }: Props) {
   const { t, locale } = useTranslation();
+  const bottomInset = useBottomInset();
   const { mapProps: mapThemeProps, mapThemeKey } = useMapViewDarkModeProps();
   const localeTag = localeToBcp47(locale);
   const use24HourClock = prefers24HourClock(locale);
@@ -540,7 +545,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[styles.scroll, { paddingBottom: bottomInset }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -550,6 +555,11 @@ export function CreateMatchScreen({ navigation, route }: Props) {
             style={[styles.eventTab, eventMode === 'match' && styles.eventTabActive]}
             onPress={() => setEventMode('match')}
           >
+            <Ionicons
+              name="tennisball-outline"
+              size={16}
+              color={eventMode === 'match' ? colors.white : colors.textSecondary}
+            />
             <Text
               style={[
                 styles.eventTabText,
@@ -566,6 +576,11 @@ export function CreateMatchScreen({ navigation, route }: Props) {
             ]}
             onPress={() => setEventMode('tournament')}
           >
+            <Ionicons
+              name="trophy-outline"
+              size={16}
+              color={eventMode === 'tournament' ? colors.white : colors.textSecondary}
+            />
             <Text
               style={[
                 styles.eventTabText,
@@ -589,7 +604,12 @@ export function CreateMatchScreen({ navigation, route }: Props) {
             onPress={() => setShowDateTimeModal(true)}
             activeOpacity={0.85}
           >
-            <Text style={styles.dateText}>{formatDateTimeLocal(scheduledAt, localeTag)}</Text>
+            <View style={styles.dateTextWrap}>
+              <Text style={styles.dateDayName}>
+                {scheduledAt.toLocaleDateString(localeTag, { weekday: 'long' })}
+              </Text>
+              <Text style={styles.dateText}>{formatDateTimeLocal(scheduledAt, localeTag)}</Text>
+            </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -617,7 +637,10 @@ export function CreateMatchScreen({ navigation, route }: Props) {
             <View style={styles.mapPinRowLeft}>
               <Ionicons name="pin-outline" size={22} color={colors.primary} />
               {!selectedCourt ? (
-                <Text style={styles.mapPinRowText}>{t('createMatch.pinOnMap')}</Text>
+                <View style={styles.mapPinPlaceholder}>
+                  <Ionicons name="map-outline" size={18} color={colors.textMuted} />
+                  <Text style={styles.mapPinRowText}>{t('createMatch.pinOnMap')}</Text>
+                </View>
               ) : (
                 <View style={styles.mapPinDetails}>
                   {customPinPlaceInfo?.city ? (
@@ -728,6 +751,11 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                         activeOpacity={0.75}
                       >
                         <View style={styles.tournamentSystemCardHeader}>
+                          <Ionicons
+                            name={def.icon}
+                            size={18}
+                            color={selected ? colors.primary : colors.textMuted}
+                          />
                           <Text
                             style={[
                               styles.tournamentSystemCardTitle,
@@ -778,7 +806,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                 {playerOptions.map((n) => (
                   <TouchableOpacity
                     key={n}
-                    style={[styles.chip, maxPlayers === n && styles.chipSelected]}
+                    style={[styles.chipWide, maxPlayers === n && styles.chipSelected]}
                     onPress={() => setMaxPlayers(n)}
                   >
                     <Text
@@ -787,7 +815,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                         maxPlayers === n && styles.chipTextSelected,
                       ]}
                     >
-                      {n}
+                      {n / 2}v{n / 2}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -797,7 +825,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                 {MATCH_SET_OPTIONS.map((n) => (
                   <TouchableOpacity
                     key={n}
-                    style={[styles.chip, matchSets === n && styles.chipSelected]}
+                    style={[styles.chipWide, matchSets === n && styles.chipSelected]}
                     onPress={() => setMatchSets(n)}
                   >
                     <Text
@@ -806,7 +834,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                         matchSets === n && styles.chipTextSelected,
                       ]}
                     >
-                      {n}
+                      {n} sets
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -816,7 +844,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                 {MATCH_POINTS_OPTIONS.map((n) => (
                   <TouchableOpacity
                     key={n}
-                    style={[styles.chip, pointsToWin === n && styles.chipSelected]}
+                    style={[styles.chipWide, pointsToWin === n && styles.chipSelected]}
                     onPress={() => setPointsToWin(n)}
                   >
                     <Text
@@ -825,7 +853,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                         pointsToWin === n && styles.chipTextSelected,
                       ]}
                     >
-                      {n}
+                      {n} pts
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -834,26 +862,22 @@ export function CreateMatchScreen({ navigation, route }: Props) {
           ) : (
             <>
               <Text style={styles.subsectionLabel}>{t('createMatch.teamCount')}</Text>
-              <View style={styles.chips}>
-                {TEAM_COUNT_OPTIONS.map((n) => (
-                  <TouchableOpacity
-                    key={n}
-                    style={[
-                      styles.chip,
-                      teamCount === n && styles.chipSelected,
-                    ]}
-                    onPress={() => setTeamCount(n)}
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        teamCount === n && styles.chipTextSelected,
-                      ]}
-                    >
-                      {n}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.stepperRow}>
+                <Pressable
+                  style={styles.stepperBtn}
+                  onPress={() => setTeamCount((v) => Math.max(3, v - 1))}
+                  disabled={teamCount <= 3}
+                >
+                  <Ionicons name="remove" size={20} color={teamCount <= 3 ? colors.textMuted : colors.primary} />
+                </Pressable>
+                <Text style={styles.stepperValue}>{teamCount}</Text>
+                <Pressable
+                  style={styles.stepperBtn}
+                  onPress={() => setTeamCount((v) => Math.min(16, v + 1))}
+                  disabled={teamCount >= 16}
+                >
+                  <Ionicons name="add" size={20} color={teamCount >= 16 ? colors.textMuted : colors.primary} />
+                </Pressable>
               </View>
               <Text style={styles.subsectionLabel}>{t('createMatch.teamSize')}</Text>
               <View style={styles.chips}>
@@ -861,7 +885,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                   <TouchableOpacity
                     key={n}
                     style={[
-                      styles.chip,
+                      styles.chipWide,
                       teamSize === n && styles.chipSelected,
                     ]}
                     onPress={() => setTeamSize(n)}
@@ -872,7 +896,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                         teamSize === n && styles.chipTextSelected,
                       ]}
                     >
-                      {n}
+                      {n}v{n}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -880,26 +904,22 @@ export function CreateMatchScreen({ navigation, route }: Props) {
               <Text style={styles.subsectionLabel}>
                 {t('createMatch.tournamentCourtCount')}
               </Text>
-              <View style={styles.chips}>
-                {TOURNAMENT_COURT_OPTIONS.map((n) => (
-                  <TouchableOpacity
-                    key={n}
-                    style={[
-                      styles.chip,
-                      tournamentCourtCount === n && styles.chipSelected,
-                    ]}
-                    onPress={() => setTournamentCourtCount(n)}
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        tournamentCourtCount === n && styles.chipTextSelected,
-                      ]}
-                    >
-                      {n}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.stepperRow}>
+                <Pressable
+                  style={styles.stepperBtn}
+                  onPress={() => setTournamentCourtCount((v) => Math.max(1, v - 1))}
+                  disabled={tournamentCourtCount <= 1}
+                >
+                  <Ionicons name="remove" size={20} color={tournamentCourtCount <= 1 ? colors.textMuted : colors.primary} />
+                </Pressable>
+                <Text style={styles.stepperValue}>{tournamentCourtCount}</Text>
+                <Pressable
+                  style={styles.stepperBtn}
+                  onPress={() => setTournamentCourtCount((v) => Math.min(20, v + 1))}
+                  disabled={tournamentCourtCount >= 20}
+                >
+                  <Ionicons name="add" size={20} color={tournamentCourtCount >= 12 ? colors.textMuted : colors.primary} />
+                </Pressable>
               </View>
               <Text style={styles.subsectionLabel}>
                 {t('createMatch.pointsToWinTournamentMatch')}
@@ -909,7 +929,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                   <TouchableOpacity
                     key={n}
                     style={[
-                      styles.chip,
+                      styles.chipWide,
                       tournamentPointsPerMatch === n && styles.chipSelected,
                     ]}
                     onPress={() => setTournamentPointsPerMatch(n)}
@@ -920,7 +940,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                         tournamentPointsPerMatch === n && styles.chipTextSelected,
                       ]}
                     >
-                      {n}
+                      {n} pts
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -975,9 +995,9 @@ export function CreateMatchScreen({ navigation, route }: Props) {
             onChangeText={setDescription}
             multiline
             numberOfLines={3}
-            maxLength={200}
+            maxLength={500}
           />
-          <Text style={styles.charCount}>{description.length}/200</Text>
+          <Text style={styles.charCount}>{description.length}/500</Text>
         </View>
 
         {/* Submit */}
@@ -1202,7 +1222,6 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: spacing.md,
-    paddingBottom: 60,
     gap: spacing.md,
   },
   section: {
@@ -1235,8 +1254,11 @@ const styles = StyleSheet.create({
   },
   eventTab: {
     flex: 1,
-    paddingVertical: spacing.sm,
+    flexDirection: 'row',
+    gap: 6,
+    paddingVertical: spacing.sm + 2,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: borderRadius.md,
   },
   eventTabActive: {
@@ -1268,10 +1290,23 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     minWidth: 0,
   },
+  mapPinPlaceholder: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
   mapPinRowText: {
     ...typography.body,
     flex: 1,
-    color: colors.textSecondary,
+    color: colors.text,
     fontWeight: '600',
   },
   mapPinDetails: {
@@ -1308,11 +1343,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary + '44',
   },
-  dateText: {
+  dateTextWrap: {
     flex: 1,
+    gap: 2,
+  },
+  dateDayName: {
+    fontSize: 11,
+    fontWeight: '800',
     color: colors.primary,
-    fontSize: 17,
-    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  dateText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '600',
   },
   dateTimeModalRoot: {
     flex: 1,
@@ -1396,11 +1441,44 @@ const styles = StyleSheet.create({
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: spacing.sm,
   },
   chip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.lg,
+  },
+  stepperBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.text,
+    minWidth: 40,
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+  },
+  chipWide: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
     borderRadius: borderRadius.full,
     backgroundColor: colors.surface,
     borderWidth: 1,

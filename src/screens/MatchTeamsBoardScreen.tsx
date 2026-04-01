@@ -18,6 +18,7 @@ import { SkillBadge } from '../components/SkillBadge';
 import { useTranslation } from '../i18n';
 import { isTournamentMatch } from '../utils/matchDisplay';
 import { colors, spacing, borderRadius, typography, shadows } from '../theme';
+import { useBottomInset } from '../hooks/useBottomInset';
 import type { FindStackParamList } from '../navigation/types';
 import type { MatchParticipant, Position } from '../types';
 
@@ -57,6 +58,7 @@ function padTeamSlots(
 
 export function MatchTeamsBoardScreen({ route }: Props) {
   const { t } = useTranslation();
+  const bottomInset = useBottomInset();
   const { matchId } = route.params;
   const user = useAuthStore((s) => s.user);
   const { data: match, isLoading, error } = useMatch(matchId);
@@ -106,6 +108,15 @@ export function MatchTeamsBoardScreen({ route }: Props) {
     setTeamByUser(next);
   }, [matchId, participantTeamSig, match]);
 
+  const isLive = Boolean(
+    match &&
+      match.status !== 'completed' &&
+      match.status !== 'cancelled' &&
+      Date.now() >= new Date(match.scheduledAt).getTime(),
+  );
+  const teamsLocked =
+    match?.status === 'completed' || isLive;
+
   const canManageTeams = Boolean(
     match &&
       user &&
@@ -123,14 +134,6 @@ export function MatchTeamsBoardScreen({ route }: Props) {
       match.status !== 'completed' &&
       !isLive,
   );
-  const isLive = Boolean(
-    match &&
-      match.status !== 'completed' &&
-      match.status !== 'cancelled' &&
-      Date.now() >= new Date(match.scheduledAt).getTime(),
-  );
-  const teamsLocked =
-    match?.status === 'completed' || isLive;
 
   const setOrganizerTeam = useCallback((uid: string, idx: number | null) => {
     setTeamByUser((prev) => ({ ...prev, [uid]: idx }));
@@ -401,7 +404,7 @@ export function MatchTeamsBoardScreen({ route }: Props) {
     return (
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
         showsVerticalScrollIndicator={false}
       >
         {Array.from({ length: n }, (_, teamIdx) => (
@@ -575,7 +578,7 @@ export function MatchTeamsBoardScreen({ route }: Props) {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.board}>
@@ -966,7 +969,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.md,
-    paddingBottom: 40,
   },
   centered: {
     flex: 1,

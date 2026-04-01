@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: '14.2857%',
-    aspectRatio: 1,
+    paddingVertical: spacing.sm + 2,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: borderRadius.md,

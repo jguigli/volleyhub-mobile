@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -73,7 +73,14 @@ export function MatchCard({
       : now >= startMs
         ? 'live'
         : 'upcoming';
-  const liveMinutes = Math.max(1, Math.floor((now - startMs) / 60000));
+  const [nowTick, setNowTick] = useState(now);
+  useEffect(() => {
+    if (timingBadge !== 'live') return;
+    const id = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, [timingBadge]);
+
+  const liveMinutes = Math.max(1, Math.floor((nowTick - startMs) / 60000));
   const timingSubtitle =
     timingBadge === 'upcoming'
       ? t('match.dateAtTime', { date: dateStr, time: timeStr })

@@ -18,6 +18,7 @@ import { SkillBadge } from '../components/SkillBadge';
 import { useTranslation } from '../i18n';
 import { navigateToUserProfile } from '../navigation/navigateToUserProfile';
 import { colors, spacing, borderRadius, typography, shadows } from '../theme';
+import { useBottomInset } from '../hooks/useBottomInset';
 import type { Position } from '../types';
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'MatchParticipants'>;
@@ -41,6 +42,7 @@ const POSITION_KEYS: Record<
 
 export function MatchParticipantsScreen({ route, navigation }: Props) {
   const { matchId } = route.params;
+  const bottomInset = useBottomInset();
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const { data: match, isLoading, error } = useMatch(matchId);
@@ -100,7 +102,7 @@ export function MatchParticipantsScreen({ route, navigation }: Props) {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
       showsVerticalScrollIndicator={false}
     >
       <Text style={styles.subtitle}>
@@ -165,7 +167,7 @@ export function MatchParticipantsScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md, paddingBottom: 40 },
+  content: { padding: spacing.md },
   centered: {
     flex: 1,
     justifyContent: 'center',

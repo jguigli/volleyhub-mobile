@@ -26,6 +26,7 @@ export type FindStackParamList = {
   InvitePlayer: { matchId: string };
   CreateMatch: CreateMatchParams;
   UserProfile: { userId: string };
+  Connections: { userId: string };
 };
 
 export type MapStackParamList = {
@@ -41,6 +42,7 @@ export type MapStackParamList = {
   MatchParticipants: { matchId: string };
   InvitePlayer: { matchId: string };
   UserProfile: { userId: string };
+  Connections: { userId: string };
 };
 
 export type MyStackParamList = {
@@ -57,6 +59,7 @@ export type MyStackParamList = {
   InvitePlayer: { matchId: string };
   CreateMatch: CreateMatchParams;
   UserProfile: { userId: string };
+  Connections: { userId: string };
 };
 
 export type ProfileStackParamList = {

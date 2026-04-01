@@ -19,8 +19,9 @@ function invalidateUserAndIncoming(
 }
 
 export function usePublicProfile(userId: string) {
+  const currentUserId = useAuthStore((s) => s.user?.id);
   return useQuery({
-    queryKey: [USERS_KEY, userId],
+    queryKey: [USERS_KEY, userId, currentUserId ?? 'anon'],
     queryFn: () => usersApi.getPublicProfile(userId),
     enabled: !!userId,
     staleTime: 60_000,

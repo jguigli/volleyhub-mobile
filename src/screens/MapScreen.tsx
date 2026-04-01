@@ -21,6 +21,7 @@ import { useNearbyMatches } from '../hooks/useMatches';
 import { MatchBottomSheet } from '../components/MatchBottomSheet';
 import { useTranslation } from '../i18n';
 import { colors, spacing, borderRadius, useMapViewDarkModeProps } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NearbyMatch } from '../types';
 
 function matchMarkerBackground(match: NearbyMatch, isFull: boolean): string {
@@ -49,7 +50,8 @@ const DEFAULT_DELTA = 0.15;
 
 export function MapScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
-  const { mapProps: mapThemeProps, mapThemeKey } = useMapViewDarkModeProps();
+  const insets = useSafeAreaInsets();
+  const { mapProps: mapThemeProps, mapThemeKey, isDark: isMapDark } = useMapViewDarkModeProps();
   const { lat, lng, loading: locationLoading } = useLocation();
   const mapRef = useRef<MapView>(null);
 
@@ -298,22 +300,30 @@ export function MapScreen({ navigation, route }: Props) {
         </Pressable>
       </View>
 
-      <View style={styles.legend}>
+      <View style={[styles.legend, isMapDark ? styles.legendDark : styles.legendLight, { top: insets.top + 12 }]}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: colors.matchOrange }]} />
-          <Text style={styles.legendText}>{t('map.legendVolley')}</Text>
+          <Text style={[styles.legendText, { color: isMapDark ? colors.text : colors.black }]}>
+            {t('map.legendVolley')}
+          </Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: colors.matchVolleyBeach }]} />
-          <Text style={styles.legendText}>{t('map.legendBeachVolley')}</Text>
+          <Text style={[styles.legendText, { color: isMapDark ? colors.text : colors.black }]}>
+            {t('map.legendBeachVolley')}
+          </Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: colors.matchVolleyGreen }]} />
-          <Text style={styles.legendText}>{t('map.legendGreenVolley')}</Text>
+          <Text style={[styles.legendText, { color: isMapDark ? colors.text : colors.black }]}>
+            {t('map.legendGreenVolley')}
+          </Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: colors.matchTournament }]} />
-          <Text style={styles.legendText}>{t('map.legendTournament')}</Text>
+          <Text style={[styles.legendText, { color: isMapDark ? colors.text : colors.black }]}>
+            {t('map.legendTournament')}
+          </Text>
         </View>
       </View>
 
@@ -446,10 +456,8 @@ const styles = StyleSheet.create({
   },
   legend: {
     position: 'absolute',
-    top: 60,
     left: 16,
     maxWidth: 200,
-    backgroundColor: 'rgba(255,255,255,0.92)',
     borderRadius: 12,
     padding: 10,
     gap: 6,
@@ -458,6 +466,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 4,
+  },
+  legendLight: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
+  },
+  legendDark: {
+    backgroundColor: 'rgba(18,26,36,0.92)',
   },
   legendItem: {
     flexDirection: 'row',
@@ -470,7 +484,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   legendText: {
-    color: colors.black,
     fontSize: 12,
     fontWeight: '600',
   },

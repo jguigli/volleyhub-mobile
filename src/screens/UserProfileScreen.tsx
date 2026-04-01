@@ -205,9 +205,12 @@ export function UserProfileScreen({ route, navigation }: Props) {
           <Text style={styles.username}>{profile.username}</Text>
 
           <View style={styles.inlineFollowRow}>
-            <View style={styles.inlineFollowRelationsWrap}>
+            <Pressable
+              style={styles.inlineFollowRelationsWrap}
+              onPress={() => (navigation as any).navigate('Connections', { userId })}
+            >
               <Text style={styles.inlineFollowRelations}>{relationsText}</Text>
-            </View>
+            </Pressable>
             {isFollowing ? (
               <Pressable
                 style={styles.inlineFollowAddBtn}
@@ -701,7 +704,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: spacing.sm + 4,
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
   },
   statsModeChipActive: {
     borderColor: colors.primary,

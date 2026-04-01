@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,6 +15,7 @@ import { MatchCard } from '../components/MatchCard';
 import { useMyMatches, useNearbyMatches } from '../hooks/useMatches';
 import { useLocation } from '../hooks/useLocation';
 import { colors, spacing, borderRadius, typography } from '../theme';
+import { useBottomInset } from '../hooks/useBottomInset';
 import type { NearbyMatch, SkillLevel } from '../types';
 import { useTranslation } from '../i18n';
 import { useAuthStore } from '../store/auth.store';
@@ -35,6 +37,7 @@ const DISTANCE_FILTERS_KM: DistanceFilterKm[] = ['all', 5, 10, 20, 50];
 
 export function MatchListScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const bottomInset = useBottomInset();
   const currentUser = useAuthStore((s) => s.user);
   const { lat, lng } = useLocation();
   const [showFilters, setShowFilters] = useState(false);
@@ -43,6 +46,25 @@ export function MatchListScreen({ navigation }: Props) {
   const [formatFilter, setFormatFilter] = useState<FormatFilter>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [timingFilter, setTimingFilter] = useState<TimingFilter>('all');
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          onPress={() => setShowFilters((v) => !v)}
+          style={styles.headerFilterBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+        >
+          <Ionicons
+            name="options-outline"
+            size={22}
+            color={showFilters ? colors.primary : colors.text}
+          />
+        </Pressable>
+      ),
+    });
+  }, [navigation, showFilters]);
   const labels = {
     filters: 'Filtres',
     level: 'Niveau',
@@ -73,6 +95,8 @@ export function MatchListScreen({ navigation }: Props) {
   const myMatchIds = new Set((myMatchesQuery.data ?? []).map((m) => m.id));
   const now = Date.now();
   const matches = rawMatches.filter((m) => {
+    // Exclude matches the user created or already joined
+    if (currentUser && m.creator_id === currentUser.id) return false;
     if (myMatchIds.has(m.id)) return false;
 
     if (formatFilter !== 'all') {
@@ -113,27 +137,6 @@ export function MatchListScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      {/* Filter toggle + panel (Explorer) */}
-      <View style={styles.filterToggleWrap}>
-        <TouchableOpacity
-          style={[styles.filterToggleBtn, showFilters && styles.filterToggleBtnActive]}
-          onPress={() => setShowFilters((v) => !v)}
-        >
-          <Ionicons
-            name="options-outline"
-            size={18}
-            color={showFilters ? colors.primary : colors.textSecondary}
-          />
-          <Text
-            style={[
-              styles.filterToggleText,
-              showFilters && styles.filterToggleTextActive,
-            ]}
-          >
-            {labels.filters}
-          </Text>
-        </TouchableOpacity>
-      </View>
 
       {showFilters && (
         <View style={styles.filtersPanel}>
@@ -328,7 +331,7 @@ export function MatchListScreen({ navigation }: Props) {
               }
             />
           )}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomInset }]}
           showsVerticalScrollIndicator={false}
           onRefresh={nearbyQuery.refetch}
           refreshing={nearbyQuery.isFetching}
@@ -383,36 +386,12 @@ const styles = StyleSheet.create({
   filterChipTextActive: {
     color: colors.white,
   },
-  filterToggleWrap: {
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
-  },
-  filterToggleBtn: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
+  headerFilterBtn: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-  },
-  filterToggleBtnActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '16',
-  },
-  filterToggleText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  filterToggleTextActive: {
-    color: colors.primary,
+    marginRight: spacing.xs,
   },
   filtersPanel: {
     backgroundColor: colors.surface,
@@ -439,7 +418,6 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingTop: spacing.sm,
-    paddingBottom: 80,
   },
   centered: {
     flex: 1,

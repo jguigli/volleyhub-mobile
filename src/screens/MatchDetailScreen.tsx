@@ -34,6 +34,7 @@ import { navigateToMapAtCoordinate } from '../navigation/navigateToMapCoordinate
 import { navigateToUserProfile } from '../navigation/navigateToUserProfile';
 import type { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography, shadows } from '../theme';
+import { useBottomInset } from '../hooks/useBottomInset';
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'MatchDetail'>;
 type TFunc = ReturnType<typeof useTranslation>['t'];
@@ -320,6 +321,7 @@ export function MatchDetailScreen({ route, navigation }: Props) {
     };
   }, [livePulse, timingBadgeForPulse]);
 
+  const bottomInset = useBottomInset();
   const courtsPulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (!match || !isTournamentMatch(match)) return;
@@ -388,7 +390,13 @@ export function MatchDetailScreen({ route, navigation }: Props) {
       : nowMs >= startMs
         ? 'live'
         : 'upcoming';
-  const liveMinutes = Math.max(1, Math.floor((nowMs - startMs) / 60000));
+  const [nowTick, setNowTick] = useState(nowMs);
+  useEffect(() => {
+    if (timingBadge !== 'live') return;
+    const id = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, [timingBadge]);
+  const liveMinutes = Math.max(1, Math.floor((nowTick - startMs) / 60000));
   const dateStr = scheduledDate.toLocaleDateString(localeTag, {
     weekday: 'long',
     month: 'long',
@@ -446,7 +454,7 @@ export function MatchDetailScreen({ route, navigation }: Props) {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
       showsVerticalScrollIndicator={false}
     >
       {/* Header: pill + status */}
@@ -658,24 +666,20 @@ export function MatchDetailScreen({ route, navigation }: Props) {
       {/* Format — collapsible */}
       <FormatAccordion match={match} tournament={tournament} volleyLabel={volleyLabel} tournamentSystemLabel={tournamentSystemLabel} t={t} />
 
-      {/* Score button for regular matches */}
-      {!tournament && (timingBadge !== 'upcoming' || isCreator) ? (
-        <View style={styles.tournamentActionsRow}>
-          <TouchableOpacity
-            style={styles.tournamentActionBtn}
-            onPress={() => navigation.navigate('EventScore', { matchId })}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="trophy-outline" size={20} color={colors.primary} />
-            <Text style={styles.tournamentActionBtnText}>
-              {t('match.viewScoreDetail')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
+      {/* Action buttons — Equipes always, Scores when live/past/creator, Match when tournament live/creator */}
+      <View style={styles.tournamentActionsRow}>
+        <TouchableOpacity
+          style={styles.tournamentActionBtn}
+          onPress={() => navigation.navigate('MatchTeamsBoard', { matchId })}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="people-outline" size={20} color={colors.primary} />
+          <Text style={styles.tournamentActionBtnText}>
+            {t('match.teamsButton')}
+          </Text>
+        </TouchableOpacity>
 
-      {tournament && (timingBadge === 'live' || isCreator) ? (
-        <View style={styles.tournamentActionsRow}>
+        {timingBadge !== 'upcoming' || isCreator ? (
           <TouchableOpacity
             style={styles.tournamentActionBtn}
             onPress={() => navigation.navigate('EventScore', { matchId })}
@@ -686,6 +690,9 @@ export function MatchDetailScreen({ route, navigation }: Props) {
               {t('match.viewScoreDetail')}
             </Text>
           </TouchableOpacity>
+        ) : null}
+
+        {tournament && (timingBadge === 'live' || isCreator) ? (
           <TouchableOpacity
             onPress={() => navigation.navigate('TournamentCourts', { matchId })}
             activeOpacity={0.8}
@@ -708,23 +715,8 @@ export function MatchDetailScreen({ route, navigation }: Props) {
               </Text>
             </Animated.View>
           </TouchableOpacity>
-        </View>
-      ) : null}
-
-      {tournament && timingBadge === 'past' && !isCreator ? (
-        <View style={styles.tournamentActionsRow}>
-          <TouchableOpacity
-            style={styles.tournamentActionBtn}
-            onPress={() => navigation.navigate('EventScore', { matchId })}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="trophy-outline" size={20} color={colors.primary} />
-            <Text style={styles.tournamentActionBtnText}>
-              {t('match.viewScoreDetail')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
+        ) : null}
+      </View>
 
       {user && !isCreator && !isJoinClosed && !isParticipant ? (
         <View style={styles.actionContainer}>
@@ -791,9 +783,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  content: {
-    paddingBottom: 40,
-  },
+  content: {},
   centered: {
     flex: 1,
     justifyContent: 'center',

@@ -36,8 +36,8 @@ export function LoginScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      const { accessToken, user } = await authApi.login({ email, password });
-      await setAuth(accessToken, user);
+      const { accessToken, refreshToken, user } = await authApi.login({ email, password });
+      await setAuth(accessToken, refreshToken, user);
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : t('auth.loginFailedGeneric');
@@ -56,17 +56,17 @@ export function LoginScreen({ navigation }: Props) {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
+        <View style={styles.logoWrap}>
           <Image
             source={require('../../assets/logo.png')}
-            style={[styles.logo, { width: 200, height: 200 }]} // taille réduite
-            resizeMode="contain"
+            style={styles.logoImage}
+            resizeMode="cover"
             accessible
             accessibilityLabel="VolleyHub Logo"
           />
-          <Text style={styles.title}>VolleyHub</Text>
-          <Text style={styles.subtitle}>{t('auth.tagline')}</Text>
         </View>
+        <Text style={styles.title}>VolleyHub</Text>
+        <Text style={styles.subtitle}>{t('auth.tagline')}</Text>
 
         <View style={styles.form}>
           <Text style={styles.label}>{t('auth.email')}</Text>
@@ -128,27 +128,35 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: spacing.lg,
-  },
-  header: {
     alignItems: 'center',
-    marginBottom: spacing.xxl,
   },
-  logo: {
-    fontSize: 64,
-    marginBottom: spacing.sm,
+  logoWrap: {
+    width: 130,
+    height: 130,
+    borderRadius: 28,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     ...typography.h1,
     color: colors.primary,
-    fontSize: 32,
+    fontSize: 28,
+    textAlign: 'center',
   },
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+    textAlign: 'center',
   },
   form: {
     gap: spacing.sm,
+    alignSelf: 'stretch',
   },
   label: {
     ...typography.bodySmall,

@@ -17,6 +17,7 @@ import { navigateToUserProfile } from '../navigation/navigateToUserProfile';
 import { SkillBadge } from '../components/SkillBadge';
 import { useTranslation } from '../i18n';
 import { borderRadius, colors, spacing, typography } from '../theme';
+import { useBottomInset } from '../hooks/useBottomInset';
 import type { PublicUser } from '../api/users.api';
 import type { Position } from '../types';
 
@@ -41,6 +42,7 @@ const POSITION_KEYS: Record<
 
 export function ConnectionsScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
+  const bottomInset = useBottomInset();
   const currentUser = useAuthStore((s) => s.user);
   const { userId } = route.params;
   const followersQ = useFollowers(userId);
@@ -67,7 +69,7 @@ export function ConnectionsScreen({ navigation, route }: Props) {
       style={styles.container}
       data={rows}
       keyExtractor={(u) => u.id}
-      contentContainerStyle={styles.list}
+      contentContainerStyle={[styles.list, { paddingBottom: bottomInset }]}
       ItemSeparatorComponent={() => <View style={styles.separator} />}
       ListEmptyComponent={
         <View style={styles.centered}>
@@ -91,9 +93,7 @@ export function ConnectionsScreen({ navigation, route }: Props) {
             <Text style={styles.username}>{item.username}</Text>
             <View style={styles.rowBadges}>
               <SkillBadge level={item.skillLevel} small />
-              <View style={styles.positionPill}>
-                <Text style={styles.positionText}>{t(POSITION_KEYS[item.position ?? 'any'])}</Text>
-              </View>
+              <Text style={styles.positionText}>{t(POSITION_KEYS[item.position ?? 'any'])}</Text>
             </View>
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
@@ -105,7 +105,7 @@ export function ConnectionsScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  list: { paddingTop: spacing.md, paddingBottom: 40 },
+  list: { paddingTop: spacing.md },
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -139,14 +139,6 @@ const styles = StyleSheet.create({
   rowInfo: { flex: 1, gap: 4 },
   username: { ...typography.body, fontWeight: '600' },
   rowBadges: { flexDirection: 'row', gap: 6, alignItems: 'center', flexWrap: 'wrap' },
-  positionPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
   positionText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
   separator: { height: spacing.sm },
 });

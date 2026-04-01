@@ -54,14 +54,14 @@ export function RegisterScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      const { accessToken, user } = await authApi.register({
+      const { accessToken, refreshToken, user } = await authApi.register({
         username,
         email,
         password,
         skillLevel,
         position,
       });
-      await setAuth(accessToken, user);
+      await setAuth(accessToken, refreshToken, user);
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : t('auth.registrationFailedGeneric');
