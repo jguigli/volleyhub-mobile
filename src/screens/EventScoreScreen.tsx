@@ -264,7 +264,7 @@ export function EventScoreScreen({ route, navigation }: Props) {
         <View style={styles.tourneyInfoCard}>
           <View style={styles.tourneyInfoRow}>
             <View style={styles.tourneyInfoItem}>
-              <Ionicons name="fitness-outline" size={16} color={colors.primary} />
+              <Ionicons name="scan-outline" size={16} color={colors.primary} />
               <Text style={styles.tourneyInfoValue}>
                 {String(match.tournamentPointsPerMatch ?? '—')} pts
               </Text>

@@ -505,8 +505,8 @@ const styles = StyleSheet.create({
   },
   attributeCardPoste: {
     alignSelf: 'stretch',
-    minHeight: 54,
     paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
   },
   attributeValue: {
     ...typography.body,
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.sm + 4,
     backgroundColor: colors.card,
   },
   statsModeChipActive: {
@@ -602,7 +602,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: borderRadius.lg,
     marginHorizontal: spacing.md,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,

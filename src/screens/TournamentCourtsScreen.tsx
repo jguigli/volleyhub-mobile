@@ -155,7 +155,7 @@ export function TournamentCourtsScreen({ route }: Props) {
         </View>
         <View style={styles.infoSep} />
         <View style={styles.infoItem}>
-          <Ionicons name="fitness-outline" size={14} color={colors.primary} />
+          <Ionicons name="scan-outline" size={14} color={colors.primary} />
           <Text style={styles.infoText}>
             {t('match.tournamentPointsTargetShort', { n: String(targetPts) })}
           </Text>

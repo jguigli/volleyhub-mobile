@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Animated,
   Easing,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -35,6 +36,129 @@ import type { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography, shadows } from '../theme';
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'MatchDetail'>;
+type TFunc = ReturnType<typeof useTranslation>['t'];
+
+function FormatBadge({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.formatBadge}>
+      <View style={styles.formatBadgeHeader}>
+        <Ionicons name={icon} size={13} color={colors.primary} />
+        <Text style={styles.formatBadgeLabel}>{label}</Text>
+      </View>
+      <Text style={styles.formatBadgeValue}>{value}</Text>
+    </View>
+  );
+}
+
+function FormatAccordion({
+  match,
+  tournament,
+  volleyLabel,
+  tournamentSystemLabel,
+  t,
+}: {
+  match: { teamCount?: number | null; teamSize?: number | null; tournamentPointsPerMatch?: number | null; tournamentCourtCount?: number | null; matchSets?: number | null; pointsToWin?: number | null };
+  tournament: boolean;
+  volleyLabel: string;
+  tournamentSystemLabel: string | null;
+  t: TFunc;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <View style={styles.formatSection}>
+      <Pressable style={styles.formatHeader} onPress={() => setOpen(!open)}>
+        <View style={styles.formatHeaderLeft}>
+          <Ionicons name="options-outline" size={18} color={colors.primary} />
+          <Text style={styles.formatHeaderTitle}>
+            {tournament
+              ? t('createMatch.tournamentFormatTitle')
+              : t('createMatch.matchFormatTitle')}
+          </Text>
+        </View>
+        <Ionicons
+          name={open ? 'chevron-up' : 'chevron-down'}
+          size={18}
+          color={colors.textMuted}
+        />
+      </Pressable>
+
+      {open ? (
+        <View style={styles.formatBadgesWrap}>
+          <FormatBadge
+            icon="tennisball-outline"
+            label={t('match.factVolleyType')}
+            value={volleyLabel}
+          />
+          {tournament ? (
+            <>
+              {tournamentSystemLabel ? (
+                <FormatBadge
+                  icon="git-branch-outline"
+                  label={t('match.factTournamentSystem')}
+                  value={tournamentSystemLabel}
+                />
+              ) : null}
+              {match.teamCount != null ? (
+                <FormatBadge
+                  icon="people-outline"
+                  label={t('match.factTeams')}
+                  value={String(match.teamCount)}
+                />
+              ) : null}
+              {match.teamSize != null ? (
+                <FormatBadge
+                  icon="person-outline"
+                  label={t('match.factTeamSize')}
+                  value={`${String(match.teamSize)}v${String(match.teamSize)}`}
+                />
+              ) : null}
+              {match.tournamentPointsPerMatch != null ? (
+                <FormatBadge
+                  icon="scan-outline"
+                  label={t('match.factPointsPerMatch')}
+                  value={`${String(match.tournamentPointsPerMatch)} pts`}
+                />
+              ) : null}
+              {match.tournamentCourtCount != null && match.tournamentCourtCount > 0 ? (
+                <FormatBadge
+                  icon="grid-outline"
+                  label={t('match.factCourtCount')}
+                  value={String(match.tournamentCourtCount)}
+                />
+              ) : null}
+            </>
+          ) : (
+            <>
+              {match.matchSets != null ? (
+                <FormatBadge
+                  icon="layers-outline"
+                  label={t('match.factSets')}
+                  value={`${String(match.matchSets)} sets`}
+                />
+              ) : null}
+              {match.pointsToWin != null ? (
+                <FormatBadge
+                  icon="scan-outline"
+                  label={t('match.factPointsToWin')}
+                  value={`${String(match.pointsToWin)} pts`}
+                />
+              ) : null}
+            </>
+          )}
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 export function MatchDetailScreen({ route, navigation }: Props) {
   const { t, locale } = useTranslation();
@@ -196,28 +320,31 @@ export function MatchDetailScreen({ route, navigation }: Props) {
     };
   }, [livePulse, timingBadgeForPulse]);
 
-  const courtsPulse = useRef(new Animated.Value(1)).current;
+  const courtsPulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (!match || !isTournamentMatch(match)) return;
     const isLive =
       match.status !== 'completed' &&
       match.status !== 'cancelled' &&
       Date.now() >= new Date(match.scheduledAt).getTime();
-    if (!isLive) return;
+    if (!isLive) {
+      courtsPulse.setValue(0);
+      return;
+    }
 
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(courtsPulse, {
-          toValue: 0.3,
-          duration: 1200,
+          toValue: 1,
+          duration: 1000,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(courtsPulse, {
-          toValue: 1,
-          duration: 1200,
+          toValue: 0,
+          duration: 1000,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]),
     );
@@ -322,7 +449,7 @@ export function MatchDetailScreen({ route, navigation }: Props) {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Type + quand + organisateur + lieu */}
+      {/* Header: pill + status */}
       <View style={[styles.section, styles.sectionPrimary]}>
         <View style={styles.detailHeaderRow}>
           <View
@@ -389,6 +516,20 @@ export function MatchDetailScreen({ route, navigation }: Props) {
           </View>
         </View>
 
+        {/* Player count — prominent position */}
+        <View style={styles.playerBarBelowVenue}>
+          <PlayerCountBadge
+            matchId={matchId}
+            currentPlayers={match.currentPlayers}
+            maxPlayers={match.maxPlayers}
+            large
+            onPress={() =>
+              navigation.navigate('MatchParticipants', { matchId })
+            }
+          />
+        </View>
+
+        {/* Venue */}
         {isPinCourt ? (
           <Pressable
             style={styles.venueCardPressable}
@@ -450,179 +591,76 @@ export function MatchDetailScreen({ route, navigation }: Props) {
               <View style={styles.venueTextWrap}>
                 <Text style={styles.venueName}>{venueLine}</Text>
                 {match.court.address?.includes(',') ? (
-                  <Text style={styles.venueAddress}>{match.court.address}</Text>
+                  <Text style={styles.venueAddress} numberOfLines={1}>
+                    {match.court.address}
+                  </Text>
                 ) : null}
               </View>
             </View>
           </View>
         )}
 
-        <View style={styles.playerBarBelowVenue}>
-          <PlayerCountBadge
-            matchId={matchId}
-            currentPlayers={match.currentPlayers}
-            maxPlayers={match.maxPlayers}
-            large
-            onPress={() =>
-              navigation.navigate('MatchParticipants', { matchId })
-            }
-          />
-        </View>
-
-        <View style={styles.divider} />
-
-        <View style={styles.detailRow}>
-          <Ionicons name="calendar-outline" size={18} color={colors.primary} />
-          <Text style={styles.detailText}>{dateStr}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="time-outline" size={18} color={colors.primary} />
-          <Text style={styles.detailText}>{timeStr}</Text>
-        </View>
-        <View style={[styles.detailRow, styles.skillDetailRow]}>
-          <Ionicons
-            name="flash-outline"
-            size={18}
-            color={colors.primary}
-          />
-          <SkillBadge level={match.skillLevel} small />
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="person-outline" size={18} color={colors.primary} />
-          <View style={styles.organizerRow}>
-            <Text style={styles.detailText}>{t('match.organizedBy')} </Text>
-            {match.creatorId !== user?.id ? (
-              <Pressable
-                onPress={() => navigateToProfile(match.creatorId)}
-                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-              >
-                <Text style={[styles.detailBold, styles.detailLink]}>
-                  {match.creator.username}
-                </Text>
-              </Pressable>
-            ) : (
-              <Text style={styles.detailBold}>{match.creator.username}</Text>
-            )}
+        {/* Date, heure, niveau */}
+        <View style={styles.infoLines}>
+          <View style={styles.infoLine}>
+            <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+            <Text style={styles.infoLineDateText}>{dateStr} · {timeStr}</Text>
+          </View>
+          <View style={styles.infoLine}>
+            <Ionicons name="flash-outline" size={16} color={colors.primary} />
+            <Text style={styles.infoLineText}>{t('match.skillLevelLabel')}</Text>
+            <SkillBadge level={match.skillLevel} small />
           </View>
         </View>
 
-        <View style={[styles.detailRow, styles.detailRowTopAligned]}>
-          <Ionicons
-            name="information-circle-outline"
-            size={18}
-            color={colors.primary}
-            style={styles.descriptionIconTop}
-          />
-          <Text
-            style={
-              userDescriptionText
-                ? styles.descriptionInlineBody
-                : styles.descriptionInlineEmpty
-            }
-          >
-            {userDescriptionText || t('match.noDescription')}
-          </Text>
-        </View>
-      </View>
-
-      {/* Format match / tournoi */}
-      <View style={styles.descriptionSection}>
-        <View style={styles.descriptionCardHeader}>
-          <View style={styles.descriptionIconCircle}>
-            <Ionicons name="people" size={22} color={colors.primary} />
-          </View>
-          <Text style={styles.descriptionCardTitle}>
-            {tournament
-              ? t('createMatch.tournamentFormatTitle')
-              : t('createMatch.matchFormatTitle')}
-          </Text>
-        </View>
-
-        <View style={styles.formatFactsColumn}>
-          <View style={styles.formatFactStackRow}>
-            <Text style={styles.formatFactLabel}>{t('match.factVolleyType')}</Text>
-            <Text style={styles.formatFactValuePlain}>{volleyLabel}</Text>
-          </View>
-          {tournament ? (
-            <>
-              {tournamentSystemLabel ? (
-                <View style={styles.formatFactStackRow}>
-                  <Text style={styles.formatFactLabel}>
-                    {t('match.factTournamentSystem')}
-                  </Text>
-                  <Text style={styles.formatFactValuePlain}>{tournamentSystemLabel}</Text>
-                </View>
-              ) : null}
-              {match.teamCount != null ? (
-                <View style={styles.formatFactStackRow}>
-                  <Text style={styles.formatFactLabel}>{t('match.factTeams')}</Text>
-                  <Text style={styles.formatFactValuePlain}>{String(match.teamCount)}</Text>
-                </View>
-              ) : null}
-              {match.teamSize != null ? (
-                <View style={styles.formatFactStackRow}>
-                  <Text style={styles.formatFactLabel}>{t('match.factTeamSize')}</Text>
-                  <Text style={styles.formatFactValuePlain}>{String(match.teamSize)}</Text>
-                </View>
-              ) : null}
-              {match.tournamentPointsPerMatch != null ? (
-                <View style={styles.formatFactStackRow}>
-                  <Text style={styles.formatFactLabel}>
-                    {t('match.factPointsPerMatch')}
-                  </Text>
-                  <Text style={styles.formatFactValuePlain}>
-                    {String(match.tournamentPointsPerMatch)}
-                  </Text>
-                </View>
-              ) : null}
-              {match.tournamentCourtCount != null && match.tournamentCourtCount > 0 ? (
-                <View style={styles.formatFactStackRow}>
-                  <Text style={styles.formatFactLabel}>
-                    {t('match.factCourtCount')}
-                  </Text>
-                  <Text style={styles.formatFactValuePlain}>
-                    {String(match.tournamentCourtCount)}
-                  </Text>
-                </View>
-              ) : null}
-            </>
+        {/* Organizer mini card */}
+        <Pressable
+          style={styles.organizerCard}
+          onPress={match.creatorId !== user?.id ? () => navigateToProfile(match.creatorId) : undefined}
+        >
+          {match.creator.profilePicture ? (
+            <Image
+              source={{ uri: match.creator.profilePicture }}
+              style={styles.organizerAvatar}
+            />
           ) : (
-            <>
-              {match.matchSets != null ? (
-                <View style={styles.formatFactStackRow}>
-                  <Text style={styles.formatFactLabel}>{t('match.factSets')}</Text>
-                  <Text style={styles.formatFactValuePlain}>{String(match.matchSets)}</Text>
-                </View>
-              ) : null}
-              {match.pointsToWin != null ? (
-                <View style={styles.formatFactStackRow}>
-                  <Text style={styles.formatFactLabel}>
-                    {t('match.factPointsToWin')}
-                  </Text>
-                  <Text style={styles.formatFactValuePlain}>
-                    {String(match.pointsToWin)}
-                  </Text>
-                </View>
-              ) : null}
-            </>
+            <View style={[styles.organizerAvatar, styles.organizerAvatarPh]}>
+              <Text style={styles.organizerAvatarInitial}>
+                {match.creator.username[0]?.toUpperCase() ?? '?'}
+              </Text>
+            </View>
           )}
-        </View>
+          <View style={styles.organizerInfo}>
+            <Text style={styles.organizerLabel}>{t('match.organizedBy')}</Text>
+            <Text
+              style={[
+                styles.organizerName,
+                match.creatorId !== user?.id && styles.detailLink,
+              ]}
+              numberOfLines={1}
+            >
+              {match.creator.username}
+            </Text>
+          </View>
+          {match.creatorId !== user?.id ? (
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          ) : null}
+        </Pressable>
+
+        {/* Description */}
+        {userDescriptionText ? (
+          <View style={styles.descriptionBlock}>
+            <Text style={styles.descriptionInlineBody}>{userDescriptionText}</Text>
+          </View>
+        ) : null}
       </View>
 
-      {tournament && (timingBadge === 'live' || isCreator) ? (
+      {/* Format — collapsible */}
+      <FormatAccordion match={match} tournament={tournament} volleyLabel={volleyLabel} tournamentSystemLabel={tournamentSystemLabel} t={t} />
+
+      {/* Score button for regular matches */}
+      {!tournament && (timingBadge !== 'upcoming' || isCreator) ? (
         <View style={styles.tournamentActionsRow}>
-          <TouchableOpacity
-            style={styles.tournamentActionBtn}
-            onPress={() => navigation.navigate('TournamentCourts', { matchId })}
-            activeOpacity={0.8}
-          >
-            <Animated.View style={{ opacity: timingBadge === 'live' ? courtsPulse : 1 }}>
-              <Ionicons name="grid-outline" size={20} color={colors.primary} />
-            </Animated.View>
-            <Text style={styles.tournamentActionBtnText}>
-              {t('match.viewTournamentCourts')}
-            </Text>
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.tournamentActionBtn}
             onPress={() => navigation.navigate('EventScore', { matchId })}
@@ -632,6 +670,43 @@ export function MatchDetailScreen({ route, navigation }: Props) {
             <Text style={styles.tournamentActionBtnText}>
               {t('match.viewScoreDetail')}
             </Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {tournament && (timingBadge === 'live' || isCreator) ? (
+        <View style={styles.tournamentActionsRow}>
+          <TouchableOpacity
+            style={styles.tournamentActionBtn}
+            onPress={() => navigation.navigate('EventScore', { matchId })}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="trophy-outline" size={20} color={colors.primary} />
+            <Text style={styles.tournamentActionBtnText}>
+              {t('match.viewScoreDetail')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('TournamentCourts', { matchId })}
+            activeOpacity={0.8}
+            style={{ flex: 1 }}
+          >
+            <Animated.View
+              style={[
+                styles.tournamentActionBtn,
+                timingBadge === 'live' && {
+                  borderColor: courtsPulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [colors.primary + '44', colors.primary],
+                  }),
+                },
+              ]}
+            >
+              <Ionicons name="grid-outline" size={20} color={colors.primary} />
+              <Text style={styles.tournamentActionBtnText}>
+                {t('match.viewTournamentCourts')}
+              </Text>
+            </Animated.View>
           </TouchableOpacity>
         </View>
       ) : null}
@@ -744,7 +819,7 @@ const styles = StyleSheet.create({
   },
   sectionPrimary: {
     padding: spacing.lg,
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   tournamentActionsRow: {
     flexDirection: 'row',
@@ -758,11 +833,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.card,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     borderWidth: 1,
-    borderColor: colors.primary + '44',
+    borderColor: colors.primary,
   },
   tournamentActionBtnText: {
     ...typography.bodySmall,
@@ -808,9 +883,27 @@ const styles = StyleSheet.create({
   },
   playerBarBelowVenue: {
     alignSelf: 'stretch',
-    marginTop: spacing.xs,
+  },
+  infoLines: {
+    gap: spacing.md,
+  },
+  infoLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  infoLineDateText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  infoLineText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
   venueCard: {
+    marginTop: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     padding: spacing.md,
@@ -820,6 +913,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   venueCardPressable: {
+    marginTop: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     padding: spacing.md,
@@ -897,53 +991,125 @@ const styles = StyleSheet.create({
   },
   venueAddress: {
     ...typography.bodySmall,
-    marginTop: 4,
     color: colors.textSecondary,
+    marginTop: 2,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
+  },
+  organizerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  organizerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  organizerAvatarPh: {
+    backgroundColor: colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  organizerAvatarInitial: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  organizerInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  organizerLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  organizerName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  descriptionBlock: {
+    paddingTop: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  formatSection: {
+    marginTop: spacing.md,
+    marginHorizontal: spacing.xs,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    overflow: 'hidden',
+  },
+  formatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  formatHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  formatHeaderTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  formatBadgesWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    padding: spacing.md,
+    paddingTop: 0,
+  },
+  formatBadge: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm + 2,
+    gap: 4,
+  },
+  formatBadgeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  formatBadgeLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  formatBadgeValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
   },
   descriptionInlineBody: {
     ...typography.body,
     flex: 1,
     color: colors.text,
     lineHeight: 22,
-  },
-  descriptionInlineEmpty: {
-    ...typography.body,
-    flex: 1,
-    color: colors.textMuted,
-    fontStyle: 'italic',
-    lineHeight: 22,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  skillDetailRow: {
-    marginTop: spacing.xs,
-  },
-  detailRowTopAligned: {
-    alignItems: 'flex-start',
-  },
-  descriptionIconTop: {
-    marginTop: 2,
-  },
-  organizerRow: {
-    flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-  },
-  detailText: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  detailBold: {
-    color: colors.text,
-    fontWeight: '600',
   },
   detailLink: {
     color: colors.primary,
@@ -991,98 +1157,9 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     lineHeight: 14,
   },
-  descriptionSection: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginTop: spacing.md,
-    marginBottom: 0,
-    marginLeft: spacing.xs,
-    marginRight: spacing.xs,
-    // marginBottom déjà défini plus haut
-    borderWidth: 1,
-    borderColor: colors.primary + '33',
-    gap: spacing.md,
-    ...shadows.card,
-  },
-  descriptionCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    alignSelf: 'stretch',
-  },
-  descriptionIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary + '18',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  descriptionCardTitle: {
-    ...typography.h3,
-    fontSize: 16,
-    color: colors.text,
-    textAlign: 'center',
-    flexShrink: 1,
-  },
-  formatFactsColumn: {
-    gap: spacing.md,
-    paddingTop: spacing.xs,
-  },
-  formatFactStackRow: {
-    gap: 4,
-    alignItems: 'flex-start',
-  },
-  formatFactLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.45,
-  },
-  formatFactValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    textAlign: 'center',
-  },
-  formatSectionDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.xs,
-  },
-  formatFactValuePlain: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  formatChipsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  formatChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.primary + '14',
-    borderWidth: 1,
-    borderColor: colors.primary + '2A',
-    borderRadius: borderRadius.full,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  formatChipText: {
-    ...typography.bodySmall,
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '600',
-  },
   actionContainer: {
     padding: spacing.md,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     gap: spacing.sm,
   },
   actionContainerTightTop: {
