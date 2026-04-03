@@ -10,11 +10,14 @@ export function useNearbyMatches(params: {
   lng?: number;
   radius?: number;
   skillLevel?: SkillLevel;
+  zoomDelta?: number;
 }) {
+  const { zoomDelta, ...apiParams } = params;
   return useQuery({
-    queryKey: [MATCHES_KEY, 'nearby', params],
-    queryFn: () => matchesApi.findNearby(params),
+    queryKey: [MATCHES_KEY, 'nearby', apiParams.radius, apiParams.skillLevel, zoomDelta],
+    queryFn: () => matchesApi.findNearby(apiParams),
     staleTime: 30_000,
+    placeholderData: (prev) => prev,
     enabled: true,
   });
 }
@@ -223,8 +226,8 @@ export function useSetMyTeam() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (args: { matchId: string; teamIndex: number | null }) =>
-      matchesApi.setMyTeam(args.matchId, args.teamIndex),
+    mutationFn: (args: { matchId: string; teamIndex: number | null; slotIndex?: number | null }) =>
+      matchesApi.setMyTeam(args.matchId, args.teamIndex, args.slotIndex),
     onSuccess: (m: Match) => {
       queryClient.setQueryData([MATCHES_KEY, m.id], m);
       queryClient.invalidateQueries({ queryKey: [MATCHES_KEY] });

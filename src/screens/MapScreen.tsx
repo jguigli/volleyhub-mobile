@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import MapView, { Marker, Region, PROVIDER_DEFAULT } from 'react-native-maps';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MapStackParamList } from '../navigation/types';
 import { useLocation } from '../hooks/useLocation';
@@ -86,6 +86,7 @@ export function MapScreen({ navigation, route }: Props) {
     lat: mapRegionCenter.latitude,
     lng: mapRegionCenter.longitude,
     radius: dynamicRadius,
+    zoomDelta: mapZoomDelta,
   });
 
   const matchMarkers = useMemo(() => {
@@ -227,6 +228,7 @@ export function MapScreen({ navigation, route }: Props) {
                   { backgroundColor: matchMarkerBackground(match, isFull) },
                 ]}
               >
+                <MaterialCommunityIcons name="volleyball" size={12} color={colors.white} />
                 <Text style={styles.matchMarkerText}>
                   {match.current_players}/{match.max_players}
                 </Text>
@@ -255,6 +257,7 @@ export function MapScreen({ navigation, route }: Props) {
                     { backgroundColor: matchMarkerBackground(group.matches[0], group.matches[0].status === 'full') },
                   ]}
                 >
+                  <MaterialCommunityIcons name="volleyball" size={12} color={colors.white} />
                   <Text style={styles.matchMarkerText}>
                     {group.matches[0].current_players}/{group.matches[0].max_players}
                   </Text>
@@ -388,6 +391,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   matchMarker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,

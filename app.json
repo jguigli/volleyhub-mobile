@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "VolleyFinder",
-    "slug": "volleyfinder",
+    "name": "VolleyHub",
+    "slug": "volleyhub",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
@@ -13,12 +13,75 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.volleyfinder.app",
+      "bundleIdentifier": "com.volleyhub.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "VolleyFinder uses your location to show nearby courts and matches.",
-        "NSLocationAlwaysUsageDescription": "VolleyFinder uses your location to show nearby courts and matches.",
-        "NSPhotoLibraryUsageDescription": "VolleyFinder needs access to your photos to set your profile picture.",
-        "NSCameraUsageDescription": "VolleyFinder can use the camera to take your profile picture."
+        "NSLocationWhenInUseUsageDescription": "VolleyHub uses your location to show nearby courts and matches.",
+        "NSLocationAlwaysUsageDescription": "VolleyHub uses your location to show nearby courts and matches.",
+        "NSPhotoLibraryUsageDescription": "VolleyHub needs access to your photos to set your profile picture.",
+        "NSCameraUsageDescription": "VolleyHub can use the camera to take your profile picture."
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "C617.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "35F9.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryDiskSpace",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "E174.1"
+            ]
+          }
+        ],
+        "NSPrivacyCollectedDataTypes": [
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePreciseLocation",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhotosorVideos",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeEmailAddress",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeUserID",
+            "NSPrivacyCollectedDataTypeLinked": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          }
+        ],
+        "NSPrivacyTracking": false
       }
     },
     "android": {
@@ -26,7 +89,7 @@
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#0b1017"
       },
-      "package": "com.volleyfinder.app",
+      "package": "com.volleyhub.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -47,14 +110,14 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "VolleyFinder needs access to your photos to set your profile picture.",
-          "cameraPermission": "VolleyFinder can use the camera to take your profile picture."
+          "photosPermission": "VolleyHub needs access to your photos to set your profile picture.",
+          "cameraPermission": "VolleyHub can use the camera to take your profile picture."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "VolleyFinder needs location access to show nearby courts and matches."
+          "locationWhenInUsePermission": "VolleyHub needs location access to show nearby courts and matches."
         }
       ],
       [
@@ -64,8 +127,10 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-asset",
+      "expo-font"
     ],
-    "scheme": "volleyfinder"
+    "scheme": "volleyhub"
   }
 }

@@ -32,17 +32,21 @@ function MatchMiniCard({
   teamCount,
   t,
   hidePhase,
+  isUpcomingGame,
 }: {
   g: TournamentGame;
   teamCount: number;
   t: TFunc;
   hidePhase?: boolean;
+  isUpcomingGame?: boolean;
 }) {
-  const phaseLabel = hidePhase ? null : formatTournamentPhase(t, g.phase);
-  const isLive = g.status === 'live';
+  const bothTbd = g.teamAIndex < 0 && g.teamBIndex < 0;
+  const phaseLabel = hidePhase || bothTbd ? null : formatTournamentPhase(t, g.phase);
   const isDone = g.status === 'finished';
-  const isPending = !isLive && !isDone;
-  const icon = statusIcon(g.status);
+  const isUpcoming = Boolean(isUpcomingGame);
+  const isLive = g.status === 'live' && !isUpcoming;
+  const isPending = !isLive && !isDone && !isUpcoming;
+  const icon = statusIcon(isUpcoming ? undefined : g.status);
 
   const winnerA = isDone && g.scoreA > g.scoreB;
   const winnerB = isDone && g.scoreB > g.scoreA;
@@ -92,11 +96,18 @@ function MatchMiniCard({
       </View>
 
       {/* Status indicator */}
-      {icon ? (
+      {isUpcoming ? (
+        <View style={styles.statusRow}>
+          <Ionicons name="time-outline" size={10} color={colors.primary} />
+          <Text style={[styles.statusLabel, { color: colors.primary }]}>
+            {t('match.gameStatusUpcoming')}
+          </Text>
+        </View>
+      ) : icon ? (
         <View style={styles.statusRow}>
           <Ionicons name={icon.name} size={10} color={icon.color} />
           <Text style={[styles.statusLabel, { color: icon.color }]}>
-            {isLive ? 'LIVE' : 'FIN'}
+            {isLive ? t('match.gameStatusLive') : t('match.gameStatusFinished')}
           </Text>
           {isLive && g.courtIndex != null && g.courtIndex >= 0 ? (
             <Text style={styles.courtTag}>
@@ -114,11 +125,13 @@ function BracketColumns({
   teamCount,
   t,
   title,
+  upcomingIds,
 }: {
   games: TournamentGame[];
   teamCount: number;
   t: TFunc;
   title?: string;
+  upcomingIds: Set<string>;
 }) {
   const rounds = useMemo(
     () => uniqueSortedRounds(games.map((g) => ({ round: g.round ?? 0 }))),
@@ -147,6 +160,7 @@ function BracketColumns({
                     g={g}
                     teamCount={teamCount}
                     t={t}
+                    isUpcomingGame={upcomingIds.has(g.fixtureId ?? '')}
                   />
                 ))}
               </View>
@@ -166,10 +180,12 @@ function PoolsFinalsColumns({
   finals,
   teamCount,
   t,
+  upcomingIds,
 }: {
   games: TournamentGame[];
   finals: TournamentGame[];
   teamCount: number;
+  upcomingIds: Set<string>;
   t: TFunc;
 }) {
   const pools = useMemo(() => {
@@ -224,6 +240,7 @@ function PoolsFinalsColumns({
                           teamCount={teamCount}
                           t={t}
                           hidePhase
+                          isUpcomingGame={upcomingIds.has(g.fixtureId ?? '')}
                         />
                       ))}
                     </View>
@@ -241,7 +258,7 @@ function PoolsFinalsColumns({
               const inRound = gamesInRound(finals, r);
               return (
                 <View key={`fi-${r}`} style={styles.bracketCol}>
-                  <Text style={styles.roundTitle}>
+                  <Text style={[styles.roundTitle, i === 0 && styles.finalsTitle]}>
                     {i === 0 ? t('match.finalsBracket') : ' '}
                   </Text>
                   <Text style={styles.roundSubtitle}>
@@ -254,6 +271,7 @@ function PoolsFinalsColumns({
                         g={g}
                         teamCount={teamCount}
                         t={t}
+                        isUpcomingGame={upcomingIds.has(g.fixtureId ?? '')}
                       />
                     ))}
                   </View>
@@ -280,6 +298,26 @@ export function TournamentScoreRecap({
   );
   const teamCount = Math.max(0, match.teamCount ?? 0);
   const system: TournamentSystem = match.tournamentSystem ?? 'single_elimination';
+  const eventNotStarted =
+    match.status !== 'completed' &&
+    match.status !== 'cancelled' &&
+    new Date(match.scheduledAt).getTime() > Date.now();
+
+  const courtCount = Math.max(1, match.tournamentCourtCount ?? 1);
+  const upcomingGameIds = useMemo(() => {
+    if (!eventNotStarted) return new Set<string>();
+    const readyGames = games
+      .filter((g) => g.status === 'ready' || g.status === 'live')
+      .sort((a, b) => {
+        if ((a.round ?? 0) !== (b.round ?? 0)) return (a.round ?? 0) - (b.round ?? 0);
+        return (a.order ?? 0) - (b.order ?? 0);
+      });
+    const ids = new Set<string>();
+    for (let i = 0; i < Math.min(courtCount, readyGames.length); i++) {
+      if (readyGames[i].fixtureId) ids.add(readyGames[i].fixtureId!);
+    }
+    return ids;
+  }, [eventNotStarted, games, courtCount]);
 
   const finalsGames = useMemo(
     () => games.filter((g) => g.phase === 'finals'),
@@ -294,11 +332,12 @@ export function TournamentScoreRecap({
           teamCount={teamCount}
           t={t}
           title={t('match.allMatches')}
+          upcomingIds={upcomingGameIds}
         />
       ) : null}
 
       {system === 'single_elimination' ? (
-        <BracketColumns games={games} teamCount={teamCount} t={t} />
+        <BracketColumns games={games} teamCount={teamCount} t={t} upcomingIds={upcomingGameIds} />
       ) : null}
 
       {system === 'pools_finals' ? (
@@ -307,6 +346,7 @@ export function TournamentScoreRecap({
           finals={finalsGames}
           teamCount={teamCount}
           t={t}
+          upcomingIds={upcomingGameIds}
         />
       ) : null}
     </View>
@@ -403,6 +443,11 @@ const styles = StyleSheet.create({
   confirmRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
   phaseTitle: {
     color: colors.matchTournament,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  finalsTitle: {
+    color: colors.primary,
     fontSize: 13,
     fontWeight: '800',
   },

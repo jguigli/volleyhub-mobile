@@ -3,7 +3,7 @@ import * as Location from 'expo-location';
 
 const DEFAULT_LAT = 48.8566; // Paris
 const DEFAULT_LNG = 2.3522; // Paris
-const FORCE_DEFAULT_PARIS_LOCATION = true;
+const FORCE_DEFAULT_PARIS_LOCATION = false;
 
 interface LocationState {
   lat: number | null;

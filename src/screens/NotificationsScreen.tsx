@@ -44,30 +44,6 @@ export function NotificationsScreen({ navigation }: Props) {
   const unread = useUnreadNotifications();
   const isFocused = useIsFocused();
 
-  const handleAccept = async (requesterId: string) => {
-    try {
-      await accept.mutateAsync(requesterId);
-    } catch {
-      /* optional toast */
-    }
-  };
-
-  const handleDecline = async (requesterId: string) => {
-    try {
-      await decline.mutateAsync(requesterId);
-    } catch {
-      /* optional */
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
-  }
-
   const connectionRequests = data ?? [];
   const inviteItems = invitesQ.data ?? [];
   const merged: RowItem[] = [
@@ -98,6 +74,30 @@ export function NotificationsScreen({ navigation }: Props) {
     if (!isFocused) return;
     void unread.markAllAsSeen();
   }, [isFocused, merged.length, unread.markAllAsSeen]);
+
+  const handleAccept = async (requesterId: string) => {
+    try {
+      await accept.mutateAsync(requesterId);
+    } catch {
+      /* optional toast */
+    }
+  };
+
+  const handleDecline = async (requesterId: string) => {
+    try {
+      await decline.mutateAsync(requesterId);
+    } catch {
+      /* optional */
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
 
   const renderRow = ({ item }: { item: RowItem }) => {
     if (item.kind === 'follow_request') {
@@ -206,7 +206,7 @@ export function NotificationsScreen({ navigation }: Props) {
           void refetch();
           void invitesQ.refetch();
         }}
-        contentContainerStyle={[styles.list, { paddingBottom: bottomInset }]}
+        contentContainerStyle={[styles.list, { paddingBottom: bottomInset, flexGrow: 1 }]}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="notifications-off-outline" size={56} color={colors.textMuted} />

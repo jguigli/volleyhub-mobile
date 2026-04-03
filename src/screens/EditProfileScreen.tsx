@@ -297,23 +297,21 @@ export function EditProfileScreen({ navigation }: Props) {
         </View>
 
         <Text style={styles.label}>{t('auth.position')}</Text>
-        <View style={styles.chips}>
-          {POSITIONS.map((pos) => (
-            <TouchableOpacity
-              key={pos}
-              style={[styles.chip, position === pos && styles.chipSelected]}
-              onPress={() => setPosition(pos)}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  position === pos && styles.chipTextSelected,
-                ]}
-              >
-                {t(`auth.positions.${pos}`)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.pickerShell}>
+          <Picker
+            selectedValue={position}
+            onValueChange={(v) => setPosition(v as Position)}
+            style={styles.picker}
+            itemStyle={Platform.OS === 'ios' ? styles.pickerItemIOS : undefined}
+          >
+            {POSITIONS.map((pos) => (
+              <Picker.Item
+                key={pos}
+                label={t(`auth.positions.${pos}`)}
+                value={pos}
+              />
+            ))}
+          </Picker>
         </View>
 
         <Text style={styles.label}>{t('profile.club')}</Text>

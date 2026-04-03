@@ -207,9 +207,11 @@ export const matchesApi = {
   setMyTeam: async (
     id: string,
     teamIndex: number | null,
+    slotIndex?: number | null,
   ): Promise<Match> => {
     const res = await apiClient.patch<Match>(`/matches/${id}/my-team`, {
       teamIndex,
+      slotIndex: slotIndex !== undefined ? slotIndex : null,
     });
     return res.data;
   },

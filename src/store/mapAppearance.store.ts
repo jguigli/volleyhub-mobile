@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type MapAppearancePreference = 'system' | 'dark' | 'light';
 
-const STORAGE_KEY = '@volleyfinder:mapAppearance';
+const STORAGE_KEY = '@volleyhub:mapAppearance';
 
 interface MapAppearanceState {
   mapAppearance: MapAppearancePreference;

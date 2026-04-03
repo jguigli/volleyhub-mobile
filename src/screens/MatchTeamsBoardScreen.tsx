@@ -45,14 +45,28 @@ function padTeamSlots(
   players: MatchParticipant[],
   size: number,
 ): (MatchParticipant | null)[] {
-  const sorted = [...players].sort(
-    (a, b) =>
-      new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime(),
-  );
-  const out: (MatchParticipant | null)[] = [];
-  for (let i = 0; i < size; i++) {
-    out.push(sorted[i] ?? null);
+  const out: (MatchParticipant | null)[] = Array.from({ length: size }, () => null);
+  if (players.length === 0) return out;
+
+  // Place players with a valid slotIndex first
+  const remaining: MatchParticipant[] = [];
+  for (const p of players) {
+    if (p.slotIndex != null && p.slotIndex >= 0 && p.slotIndex < size && out[p.slotIndex] === null) {
+      out[p.slotIndex] = p;
+    } else {
+      remaining.push(p);
+    }
   }
+
+  // Place remaining players (no slotIndex) in first available slots
+  const sorted = [...remaining].sort(
+    (a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime(),
+  );
+  for (const p of sorted) {
+    const idx = out.indexOf(null);
+    if (idx >= 0) out[idx] = p;
+  }
+
   return out;
 }
 
@@ -277,7 +291,7 @@ export function MatchTeamsBoardScreen({ route }: Props) {
         (p) => p.teamIndex === teamIdx && p.userId !== user?.id,
       ).length < size;
 
-    const assignToTournamentTeam = async (teamIdx: number) => {
+    const assignToTournamentTeam = async (teamIdx: number, slotIdx?: number) => {
       if (!user) {
         Alert.alert(t('match.signInRequiredTitle'), t('match.signInRequiredMessage'));
         return;
@@ -289,15 +303,12 @@ export function MatchTeamsBoardScreen({ route }: Props) {
       if (teamsLocked) {
         return;
       }
-      if (myTournamentTeam === teamIdx) {
-        return;
-      }
       if (!roomOnTeam(teamIdx)) {
         Alert.alert(t('common.error'), t('match.teamsBoardTeamFull'));
         return;
       }
       try {
-        await setTeamMut.mutateAsync({ matchId, teamIndex: teamIdx });
+        await setTeamMut.mutateAsync({ matchId, teamIndex: teamIdx, slotIndex: slotIdx ?? null });
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : t('match.teamsBoardAssignFailed');
         Alert.alert(t('common.error'), msg);
@@ -359,9 +370,10 @@ export function MatchTeamsBoardScreen({ route }: Props) {
       const slots = padTeamSlots(teamPlayers, size);
       const hasRoom = roomOnTeam(teamIdx);
 
+      const isMyTeam = myTournamentTeam === teamIdx;
       return (
-        <View style={styles.tournamentGridCellInner}>
-          <View style={styles.tournamentColHead}>
+        <View style={[styles.tournamentGridCellInner, isMyTeam && styles.colMine]}>
+          <View style={[styles.tournamentColHead, isMyTeam && styles.colHeadMine]}>
             <Text style={styles.colHeadText}>
               {t('match.teamN', { n: String(teamIdx + 1) })}
             </Text>
@@ -383,12 +395,12 @@ export function MatchTeamsBoardScreen({ route }: Props) {
                     teamsLocked &&
                       styles.slotEmptyDisabled,
                   ]}
-                  onPress={() => assignToTournamentTeam(teamIdx)}
+                  onPress={() => assignToTournamentTeam(teamIdx, i)}
                   disabled={!isParticipant || !hasRoom || setTeamMut.isPending || teamsLocked}
                   activeOpacity={0.75}
                 >
                   <Ionicons
-                    name="add-outline"
+                    name="person-outline"
                     size={18}
                     color={isParticipant && hasRoom ? colors.primary : colors.textMuted}
                   />
@@ -480,7 +492,7 @@ export function MatchTeamsBoardScreen({ route }: Props) {
   const myTeam =
     myP?.teamIndex === 0 || myP?.teamIndex === 1 ? myP.teamIndex : null;
 
-  const assignTo = async (teamIdx: 0 | 1) => {
+  const assignTo = async (teamIdx: 0 | 1, slotIdx?: number) => {
     if (!user) {
       Alert.alert(t('match.signInRequiredTitle'), t('match.signInRequiredMessage'));
       return;
@@ -492,11 +504,8 @@ export function MatchTeamsBoardScreen({ route }: Props) {
     if (teamsLocked) {
       return;
     }
-    if (myTeam === teamIdx) {
-      return;
-    }
     try {
-      await setTeamMut.mutateAsync({ matchId, teamIndex: teamIdx });
+      await setTeamMut.mutateAsync({ matchId, teamIndex: teamIdx, slotIndex: slotIdx ?? null });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : t('match.teamsBoardAssignFailed');
       Alert.alert(t('common.error'), msg);
@@ -556,19 +565,19 @@ export function MatchTeamsBoardScreen({ route }: Props) {
     }
 
     const canTap =
-      !teamsLocked && isParticipant && (myTeam === null || myTeam !== teamIdx);
+      !teamsLocked && isParticipant;
     return (
       <TouchableOpacity
         key={key}
         style={[styles.slotEmpty, !canTap && styles.slotEmptyDisabled]}
-        onPress={() => assignTo(teamIdx)}
+        onPress={() => assignTo(teamIdx, slotIndex)}
         disabled={!canTap || setTeamMut.isPending}
         activeOpacity={0.75}
       >
         <Ionicons
           name="person-outline"
           size={18}
-          color={colors.textMuted}
+          color={colors.primary}
         />
         <Text style={styles.slotEmptyText}>{t('match.emptyTeamSlot')}</Text>
       </TouchableOpacity>
@@ -582,8 +591,8 @@ export function MatchTeamsBoardScreen({ route }: Props) {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.board}>
-        <View style={[styles.col, styles.colA]}>
-          <View style={[styles.colHead, styles.colHeadA]}>
+        <View style={[styles.col, myTeam === 0 ? styles.colMine : styles.colA]}>
+          <View style={[styles.colHead, myTeam === 0 ? styles.colHeadMine : styles.colHeadA]}>
             <Text style={styles.colHeadText}>{t('match.teamA')}</Text>
             <Text style={styles.colCount}>
               {teamAPlayers.length}/{slotsPerTeam}
@@ -593,8 +602,8 @@ export function MatchTeamsBoardScreen({ route }: Props) {
             {slotsA.map((slot, i) => renderSlot(slot, 0, i))}
           </View>
         </View>
-        <View style={[styles.col, styles.colB]}>
-          <View style={[styles.colHead, styles.colHeadB]}>
+        <View style={[styles.col, myTeam === 1 ? styles.colMine : styles.colB]}>
+          <View style={[styles.colHead, myTeam === 1 ? styles.colHeadMine : styles.colHeadB]}>
             <Text style={styles.colHeadText}>{t('match.teamB')}</Text>
             <Text style={styles.colCount}>
               {teamBPlayers.length}/{slotsPerTeam}
@@ -995,12 +1004,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   colA: {
-    borderColor: colors.primary + '66',
-    backgroundColor: colors.primary + '08',
+    borderColor: colors.border,
+    backgroundColor: colors.card,
   },
   colB: {
-    borderColor: colors.matchOrange + '88',
-    backgroundColor: colors.matchOrange + '10',
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  colMine: {
+    borderColor: colors.primary + '66',
+    backgroundColor: colors.primary + '08',
   },
   colHead: {
     flexDirection: 'row',
@@ -1011,12 +1024,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   colHeadA: {
-    backgroundColor: colors.primary + '22',
-    borderBottomColor: colors.primary + '44',
+    backgroundColor: colors.surface,
+    borderBottomColor: colors.border,
   },
   colHeadB: {
-    backgroundColor: colors.matchOrange + '22',
-    borderBottomColor: colors.matchOrange + '44',
+    backgroundColor: colors.surface,
+    borderBottomColor: colors.border,
+  },
+  colHeadMine: {
+    backgroundColor: colors.primary + '22',
+    borderBottomColor: colors.primary + '44',
   },
   colHeadText: {
     fontSize: 11,
@@ -1157,7 +1174,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.card,
   },
   tournamentRow: {
     flexDirection: 'row',
@@ -1196,7 +1213,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
-    backgroundColor: colors.primary + '12',
+    backgroundColor: colors.surface,
   },
   slotEmptyReadonly: {
     flexDirection: 'row',

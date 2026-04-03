@@ -271,16 +271,16 @@ export function EventScoreScreen({ route, navigation }: Props) {
             <View style={styles.tourneyInfoCard}>
               <View style={styles.tourneyInfoRow}>
                 <View style={styles.tourneyInfoItem}>
-                  <Ionicons name="scan-outline" size={16} color={colors.primary} />
+                  <Ionicons name="grid-outline" size={16} color={colors.primary} />
                   <Text style={styles.tourneyInfoValue}>
-                    {String(match.tournamentPointsPerMatch ?? '—')} pts
+                    {t('match.tournamentCourtsMeta', { n: String(courtCount) })}
                   </Text>
                 </View>
                 <View style={styles.tourneyInfoSep} />
                 <View style={styles.tourneyInfoItem}>
-                  <Ionicons name="grid-outline" size={16} color={colors.primary} />
+                  <Ionicons name="people-outline" size={16} color={colors.primary} />
                   <Text style={styles.tourneyInfoValue}>
-                    {t('match.tournamentCourtsMeta', { n: String(courtCount) })}
+                    {t('match.tournamentTeamCount', { n: String(match.teamCount ?? 0) })}
                   </Text>
                 </View>
               </View>
@@ -294,31 +294,51 @@ export function EventScoreScreen({ route, navigation }: Props) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.section}>
-        <MatchScoreSummary match={match} embedded />
-        <Text style={styles.sectionTitle}>{t('match.scoreBySet')}</Text>
+      <MatchScoreSummary match={match} />
 
-        {!canManage ? (
-          <Text style={styles.readOnlyHint}>{t('match.scoreReadOnlyHint')}</Text>
-        ) : null}
+      <View style={styles.setsSection}>
+        <View style={styles.setsSectionHeader}>
+          <Text style={styles.setsSectionTitle}>{t('match.scoreBySet')}</Text>
+          {!canManage ? (
+            <Text style={styles.readOnlyHint}>{t('match.scoreReadOnlyHint')}</Text>
+          ) : null}
+        </View>
 
         <View style={styles.columnHeaderRow}>
           <View style={styles.headerSpacer} />
-          <Text style={styles.columnHeaderText}>{t('match.teamA')}</Text>
+          <View style={styles.columnHeaderBadgeWrap}>
+            <View style={styles.columnHeaderBadge}>
+              <Text style={styles.columnHeaderBadgeText}>{t('match.teamA')}</Text>
+            </View>
+          </View>
           <View style={styles.headerDashSpacer} />
-          <Text style={styles.columnHeaderText}>{t('match.teamB')}</Text>
+          <View style={styles.columnHeaderBadgeWrap}>
+            <View style={styles.columnHeaderBadge}>
+              <Text style={styles.columnHeaderBadgeText}>{t('match.teamB')}</Text>
+            </View>
+          </View>
         </View>
 
         {setRows.map((row, i) => {
           const rowLocked = canManage && lockRowsFromIndex >= 0 && i >= lockRowsFromIndex;
+          const parsed = parseSetRowPair(row);
+          const aWins = parsed ? parsed.teamA > parsed.teamB : false;
+          const bWins = parsed ? parsed.teamB > parsed.teamA : false;
           return (
-          <View key={`set-${i}`} style={styles.setRow}>
+          <View
+            key={`set-${i}`}
+            style={[
+              styles.setCard,
+              rowLocked && styles.setCardLocked,
+            ]}
+          >
             <Text style={[styles.setLabel, rowLocked && styles.setLabelLocked]}>
               {t('match.setN', { n: String(i + 1) })}
             </Text>
             <TextInput
               style={[
                 styles.scoreInput,
+                aWins && styles.scoreInputWinner,
                 (!canManage || rowLocked) && styles.scoreInputReadOnly,
                 rowLocked && styles.scoreInputLocked,
               ]}
@@ -333,6 +353,7 @@ export function EventScoreScreen({ route, navigation }: Props) {
             <TextInput
               style={[
                 styles.scoreInput,
+                bWins && styles.scoreInputWinner,
                 (!canManage || rowLocked) && styles.scoreInputReadOnly,
                 rowLocked && styles.scoreInputLocked,
               ]}
@@ -346,13 +367,18 @@ export function EventScoreScreen({ route, navigation }: Props) {
           </View>
         )})}
 
-        <View style={styles.totalSetsRow}>
+        <View style={styles.totalSetsCard}>
           <Text style={styles.totalSetsLabel}>{t('match.setsTotalLabel')}</Text>
-          <Text style={styles.totalSetsValue}>{String(previewSetsWon.teamA)}</Text>
+          <Text style={[
+            styles.totalSetsValue,
+            savedWinner === 'teamA' && styles.totalSetsValueWinner,
+          ]}>{String(previewSetsWon.teamA)}</Text>
           <Text style={styles.setDash}>—</Text>
-          <Text style={styles.totalSetsValue}>{String(previewSetsWon.teamB)}</Text>
+          <Text style={[
+            styles.totalSetsValue,
+            savedWinner === 'teamB' && styles.totalSetsValueWinner,
+          ]}>{String(previewSetsWon.teamB)}</Text>
         </View>
-
       </View>
 
       {canManage ? (
@@ -376,7 +402,7 @@ export function EventScoreScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: 32 },
+  content: { paddingBottom: 32, paddingTop: spacing.sm },
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -384,17 +410,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   errorText: { ...typography.body, color: colors.error },
-  section: {
-    margin: spacing.md,
-    marginBottom: 0,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    ...shadows.card,
+  setsSection: {
+    marginHorizontal: spacing.md,
+    gap: spacing.sm,
   },
-  sectionTitle: { ...typography.h3, fontSize: 17, marginBottom: spacing.md },
+  setsSectionHeader: {
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  setsSectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   notEnoughTeamsCard: {
     margin: spacing.md,
     padding: spacing.xl,
@@ -556,33 +586,54 @@ const styles = StyleSheet.create({
   readOnlyHint: {
     ...typography.bodySmall,
     color: colors.textSecondary,
-    marginBottom: spacing.md,
   },
   columnHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.xs,
-    paddingBottom: spacing.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.sm,
   },
   headerSpacer: { width: 46 },
   headerDashSpacer: { width: 20 },
-  columnHeaderText: {
+  columnHeaderBadgeWrap: {
     flex: 1,
-    ...typography.bodySmall,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textAlign: 'center',
+    alignItems: 'center',
   },
-  setRow: {
-    marginTop: spacing.sm,
+  columnHeaderBadge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primary + '18',
+    borderWidth: 1,
+    borderColor: colors.primary + '33',
+  },
+  columnHeaderBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  setCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
   },
-  setLabel: { width: 46, ...typography.bodySmall, color: colors.textSecondary },
+  setCardLocked: {
+    opacity: 0.45,
+  },
+  setLabel: {
+    width: 46,
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+  },
   setLabelLocked: { color: colors.textMuted },
   scoreInput: {
     flex: 1,
@@ -593,37 +644,46 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.text,
     backgroundColor: colors.surface,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  scoreInputWinner: {
+    borderColor: colors.primary + '55',
+    color: colors.primary,
   },
   scoreInputReadOnly: {
-    opacity: 0.85,
     backgroundColor: colors.background,
   },
   scoreInputLocked: {
     borderColor: colors.border + '88',
   },
   setDash: { color: colors.textMuted, fontSize: 20 },
-  totalSetsRow: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
+  totalSetsCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.primary + '33',
+    backgroundColor: colors.primary + '10',
   },
   totalSetsLabel: {
     width: 46,
-    ...typography.bodySmall,
+    fontSize: 12,
     fontWeight: '800',
-    color: colors.text,
+    color: colors.primary,
+    textTransform: 'uppercase',
   },
   totalSetsValue: {
     flex: 1,
-    ...typography.body,
+    fontSize: 22,
     fontWeight: '800',
     color: colors.text,
     textAlign: 'center',
+  },
+  totalSetsValueWinner: {
+    color: colors.primary,
   },
   actions: { margin: spacing.md, marginBottom: 0 },
   primaryBtn: {

@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { User } from '../types';
 
-const TOKEN_KEY = 'volleyfinder_token';
-const REFRESH_TOKEN_KEY = 'volleyfinder_refresh_token';
-const USER_KEY = 'volleyfinder_user';
+const TOKEN_KEY = 'volleyhub_token';
+const REFRESH_TOKEN_KEY = 'volleyhub_refresh_token';
+const USER_KEY = 'volleyhub_user';
 
 interface AuthState {
   token: string | null;

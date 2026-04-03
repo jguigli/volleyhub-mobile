@@ -4,9 +4,9 @@
  */
 export const colors = {
   // Marque & actions
-  primary: '#2dd4bf',
-  primaryDark: '#14b8a6',
-  primaryLight: '#5eead4',
+  primary: '#22d3ee',
+  primaryDark: '#5eead4',
+  primaryLight: '#67e8f9',
 
   secondary: '#fb923c',
   secondaryLight: '#fdba74',

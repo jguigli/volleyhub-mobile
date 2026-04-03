@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Locale } from '../i18n/types';
 
-const STORAGE_KEY = '@volleyfinder:locale';
+const STORAGE_KEY = '@volleyhub:locale';
 
 interface LocaleState {
   locale: Locale;

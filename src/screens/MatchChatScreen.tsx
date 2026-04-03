@@ -54,6 +54,7 @@ export function MatchChatScreen({ route, navigation }: Props) {
         match.participants.some((p) => p.userId === user.id)),
   );
   const isCreator = Boolean(user && match && match.creatorId === user.id);
+  const isEnded = match?.status === 'completed' || match?.status === 'cancelled';
 
   const mergeMessage = useCallback((msg: MatchChatMessage) => {
     if (seenIds.current.has(msg.id)) return;
@@ -273,29 +274,36 @@ export function MatchChatScreen({ route, navigation }: Props) {
         />
       )}
 
-      <View style={styles.composer}>
-        <TextInput
-          style={styles.input}
-          value={draft}
-          onChangeText={setDraft}
-          placeholder={t('match.chatPlaceholder')}
-          placeholderTextColor={colors.textMuted}
-          multiline
-          maxLength={2000}
-          editable={!sending}
-        />
-        <TouchableOpacity
-          style={[styles.sendBtn, sending && styles.sendBtnDisabled]}
-          onPress={send}
-          disabled={sending || !draft.trim()}
-        >
-          {sending ? (
-            <ActivityIndicator color={colors.white} size="small" />
-          ) : (
-            <Ionicons name="send" size={20} color={colors.white} />
-          )}
-        </TouchableOpacity>
-      </View>
+      {isEnded ? (
+        <View style={styles.composerClosed}>
+          <Ionicons name="lock-closed-outline" size={16} color={colors.textMuted} />
+          <Text style={styles.composerClosedText}>{t('match.chatClosed')}</Text>
+        </View>
+      ) : (
+        <View style={styles.composer}>
+          <TextInput
+            style={styles.input}
+            value={draft}
+            onChangeText={setDraft}
+            placeholder={t('match.chatPlaceholder')}
+            placeholderTextColor={colors.textMuted}
+            multiline
+            maxLength={2000}
+            editable={!sending}
+          />
+          <TouchableOpacity
+            style={[styles.sendBtn, sending && styles.sendBtnDisabled]}
+            onPress={send}
+            disabled={sending || !draft.trim()}
+          >
+            {sending ? (
+              <ActivityIndicator color={colors.white} size="small" />
+            ) : (
+              <Ionicons name="send" size={20} color={colors.white} />
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       <Modal visible={muteModal} animationType="slide" transparent>
         <View style={styles.modalBackdrop}>
@@ -378,6 +386,21 @@ const styles = StyleSheet.create({
   },
   bubbleTextMine: { color: colors.white },
   bubbleTextOther: { color: colors.text },
+  composerClosed: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  composerClosedText: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',

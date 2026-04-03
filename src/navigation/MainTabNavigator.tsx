@@ -30,6 +30,7 @@ import {
   MapStackParamList,
   MyStackParamList,
   ProfileStackParamList,
+  NotificationsStackParamList,
 } from './types';
 import { colors } from '../theme';
 import { useTranslation } from '../i18n';
@@ -41,13 +42,15 @@ const FindStack = createNativeStackNavigator<FindStackParamList>();
 const MapStack = createNativeStackNavigator<MapStackParamList>();
 const MyStack = createNativeStackNavigator<MyStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
+const NotifStack = createNativeStackNavigator<NotificationsStackParamList>();
 
 const STACK_HEADER_OPTIONS = {
-  headerStyle: { backgroundColor: colors.surface },
+  headerStyle: { backgroundColor: colors.surface, height: 110 },
   headerTintColor: colors.text,
   headerTitleStyle: { fontWeight: '700' as const },
   headerBackTitleVisible: false,
   contentStyle: { backgroundColor: colors.background },
+  headerTopInsetEnabled: true,
 };
 
 function FindNavigator() {
@@ -86,7 +89,7 @@ function FindNavigator() {
       <FindStack.Screen
         name="TournamentCourts"
         component={TournamentCourtsScreen}
-        options={{ title: t('match.viewTournamentCourts') }}
+        options={{ title: t('match.tournamentCourtsPageTitle') }}
       />
       <FindStack.Screen
         name="TournamentStandings"
@@ -177,7 +180,7 @@ function MapNavigator() {
         component={TournamentCourtsScreen}
         options={{
           headerShown: true,
-          title: t('match.viewTournamentCourts'),
+          title: t('match.tournamentCourtsPageTitle'),
         }}
       />
       <MapStack.Screen
@@ -267,7 +270,7 @@ function MyNavigator() {
       <MyStack.Screen
         name="TournamentCourts"
         component={TournamentCourtsScreen}
-        options={{ title: t('match.viewTournamentCourts') }}
+        options={{ title: t('match.tournamentCourtsPageTitle') }}
       />
       <MyStack.Screen
         name="TournamentStandings"
@@ -359,7 +362,7 @@ function ProfileNavigator() {
       <ProfileStack.Screen
         name="TournamentCourts"
         component={TournamentCourtsScreen}
-        options={{ title: t('match.viewTournamentCourts') }}
+        options={{ title: t('match.tournamentCourtsPageTitle') }}
       />
       <ProfileStack.Screen
         name="TournamentStandings"
@@ -391,12 +394,24 @@ function ProfileNavigator() {
         component={UserProfileScreen}
         options={{ title: t('nav.profile') }}
       />
-      <ProfileStack.Screen
+    </ProfileStack.Navigator>
+  );
+}
+
+function NotificationsNavigator() {
+  const { t } = useTranslation();
+  return (
+    <NotifStack.Navigator
+      screenOptions={({ navigation }) =>
+        withNoFeedbackHeaderBack(navigation, STACK_HEADER_OPTIONS)
+      }
+    >
+      <NotifStack.Screen
         name="Notifications"
         component={NotificationsScreen}
         options={{ title: t('nav.notifications') }}
       />
-    </ProfileStack.Navigator>
+    </NotifStack.Navigator>
   );
 }
 
@@ -423,18 +438,17 @@ export function MainTabNavigator() {
 
           if (route.name === 'FindTab') {
             iconName = focused ? 'search' : 'search-outline';
-          } else if (route.name === 'MapTab') {
-            iconName = focused ? 'earth' : 'earth-outline';
           } else if (route.name === 'MyTab') {
             iconName = focused ? 'bookmark' : 'bookmark-outline';
+          } else if (route.name === 'MapTab') {
+            iconName = focused ? 'earth' : 'earth-outline';
+          } else if (route.name === 'NotificationsTab') {
+            iconName = focused ? 'notifications' : 'notifications-outline';
           } else if (route.name === 'ProfileTab') {
             iconName = focused ? 'person' : 'person-outline';
           }
 
-          if (route.name === 'MapTab') {
-            return <Ionicons name={iconName} size={size} color={color} />;
-          }
-          if (route.name === 'ProfileTab') {
+          if (route.name === 'NotificationsTab') {
             return (
               <View style={styles.profileTabIconWrap}>
                 <Ionicons name={iconName} size={size} color={color} />
@@ -456,6 +470,11 @@ export function MainTabNavigator() {
         name="MapTab"
         component={MapNavigator}
         options={{ tabBarAccessibilityLabel: t('tabs.map') }}
+      />
+      <Tab.Screen
+        name="NotificationsTab"
+        component={NotificationsNavigator}
+        options={{ tabBarAccessibilityLabel: t('nav.notifications') }}
       />
       <Tab.Screen
         name="MyTab"

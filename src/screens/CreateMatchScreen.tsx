@@ -17,7 +17,7 @@ import DateTimePicker, {
   DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView from 'react-native-maps';
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
@@ -616,8 +616,8 @@ export function CreateMatchScreen({ navigation, route }: Props) {
             style={[styles.eventTab, eventMode === 'match' && styles.eventTabActive]}
             onPress={() => setEventMode('match')}
           >
-            <Ionicons
-              name="tennisball-outline"
+            <MaterialCommunityIcons
+              name="volleyball"
               size={16}
               color={eventMode === 'match' ? colors.white : colors.textSecondary}
             />
@@ -655,7 +655,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
 
         {/* Date */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>
             <Ionicons name="calendar-outline" size={16} color={colors.primary} />{' '}
             {t('createMatch.dateTime')}
           </Text>
@@ -696,7 +696,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
             activeOpacity={0.75}
           >
             <View style={styles.mapPinRowLeft}>
-              <Ionicons name="pin-outline" size={22} color={colors.primary} />
+              <Ionicons name="location-outline" size={22} color={colors.primary} />
               {!selectedCourt ? (
                 <View style={styles.mapPinPlaceholder}>
                   <Ionicons name="map-outline" size={18} color={colors.textMuted} />
@@ -1026,6 +1026,16 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                   </Text>
                   <Text style={styles.durationValue}>{estimatedDuration}</Text>
                 </View>
+                <Pressable
+                  style={styles.durationInfoBtn}
+                  onPress={() => Alert.alert(
+                    t('createMatch.estimatedDuration'),
+                    t('createMatch.estimatedDurationExplanation'),
+                  )}
+                  hitSlop={8}
+                >
+                  <Text style={styles.durationInfoBtnText}>i</Text>
+                </Pressable>
               </View>
             </>
           )}
@@ -1598,6 +1608,20 @@ const styles = StyleSheet.create({
   },
   durationTextWrap: {
     flex: 1,
+  },
+  durationInfoBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.textMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  durationInfoBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.textSecondary,
   },
   durationLabel: {
     fontSize: 11,

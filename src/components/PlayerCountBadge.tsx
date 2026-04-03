@@ -91,8 +91,8 @@ export function PlayerCountBadge({
   }
 
   return (
-    <View style={[styles.badge, { backgroundColor: barColor }]}>
-      <Text style={[styles.badgeText, { color: compactBadgeTextColor }]}>
+    <View style={styles.badge}>
+      <Text style={[styles.badgeText, { color: barColor }]}>
         {currentPlayers}/{maxPlayers}
       </Text>
     </View>
@@ -101,12 +101,11 @@ export function PlayerCountBadge({
 
 const styles = StyleSheet.create({
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: borderRadius.full,
+    paddingHorizontal: 2,
+    paddingVertical: 2,
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '700',
   },
   largeContainer: {

@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { FindStackParamList } from '../navigation/types';
 import { MatchCard } from '../components/MatchCard';
 import { useMyMatches, useNearbyMatches } from '../hooks/useMatches';
@@ -47,8 +48,36 @@ export function MatchListScreen({ navigation }: Props) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [timingFilter, setTimingFilter] = useState<TimingFilter>('all');
 
+  const nearbyQuery = useNearbyMatches({
+    lat: lat ?? undefined,
+    lng: lng ?? undefined,
+    radius: distanceKm === 'all' ? 1000000 : distanceKm * 1000,
+    skillLevel: skillFilter !== 'all' ? skillFilter : undefined,
+  });
+  const myMatchesQuery = useMyMatches();
+
+  useFocusEffect(
+    useCallback(() => {
+      nearbyQuery.refetch();
+      myMatchesQuery.refetch();
+    }, []),
+  );
+
   useLayoutEffect(() => {
     navigation.setOptions({
+      headerLeft: () => (
+        <Pressable
+          onPress={() => {
+            nearbyQuery.refetch();
+            myMatchesQuery.refetch();
+          }}
+          style={styles.headerRefreshBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+        >
+          <Ionicons name="refresh-outline" size={22} color={colors.text} />
+        </Pressable>
+      ),
       headerRight: () => (
         <Pressable
           onPress={() => setShowFilters((v) => !v)}
@@ -64,7 +93,7 @@ export function MatchListScreen({ navigation }: Props) {
         </Pressable>
       ),
     });
-  }, [navigation, showFilters]);
+  }, [navigation, showFilters, nearbyQuery.refetch, myMatchesQuery.refetch]);
   const labels = {
     filters: 'Filtres',
     level: 'Niveau',
@@ -82,14 +111,6 @@ export function MatchListScreen({ navigation }: Props) {
     live: 'En cours',
     upcoming: 'À venir',
   };
-
-  const nearbyQuery = useNearbyMatches({
-    lat: lat ?? undefined,
-    lng: lng ?? undefined,
-    radius: distanceKm === 'all' ? 1000000 : distanceKm * 1000,
-    skillLevel: skillFilter !== 'all' ? skillFilter : undefined,
-  });
-  const myMatchesQuery = useMyMatches();
 
   const rawMatches = nearbyQuery.data ?? [];
   const myMatchIds = new Set((myMatchesQuery.data ?? []).map((m) => m.id));
@@ -386,6 +407,13 @@ const styles = StyleSheet.create({
   filterChipTextActive: {
     color: colors.white,
   },
+  headerRefreshBtn: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: spacing.xs,
+  },
   headerFilterBtn: {
     width: 44,
     height: 44,
@@ -398,6 +426,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
     paddingBottom: spacing.md,
     gap: spacing.sm,
   },

@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -8,12 +8,12 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { ProfileStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/auth.store';
 import { useUserMatchStats } from '../hooks/useMatches';
 import { usePublicProfile } from '../hooks/useUsers';
-import { useUnreadNotifications } from '../hooks/useUnreadNotifications';
 import { SkillBadge } from '../components/SkillBadge';
 import { localeToBcp47, useTranslation } from '../i18n';
 import { colors, spacing, borderRadius, typography, shadows } from '../theme';
@@ -51,30 +51,20 @@ export function ProfileScreen({ navigation }: Props) {
   const localeTag = localeToBcp47(locale);
   const [statsFormat, setStatsFormat] = useState<'match' | 'tournament'>('match');
   const { user } = useAuthStore();
-  const { data: profile } = usePublicProfile(user?.id ?? '');
-  const { hasUnread } = useUnreadNotifications();
+  const { data: profile, refetch: refetchProfile } = usePublicProfile(user?.id ?? '');
   const { data: matchStats, isLoading: statsLoading } = useUserMatchStats(
     user?.id ?? '',
     statsFormat,
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      refetchProfile();
+    }, [refetchProfile]),
+  );
+
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerLeft: () => (
-        <Pressable
-          onPress={() => navigation.navigate('Notifications')}
-          style={styles.profileHeaderIcon}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          accessibilityRole="button"
-          accessibilityLabel={t('nav.notifications')}
-          android_ripple={null}
-        >
-          <View style={styles.notifIconWrap}>
-            <Ionicons name="notifications-outline" size={24} color={colors.text} />
-            {hasUnread ? <View style={styles.notifBadge} /> : null}
-          </View>
-        </Pressable>
-      ),
       headerRight: () => (
         <Pressable
           onPress={() => navigation.navigate('Settings')}
@@ -88,7 +78,7 @@ export function ProfileScreen({ navigation }: Props) {
         </Pressable>
       ),
     });
-  }, [navigation, hasUnread, t]);
+  }, [navigation, t]);
 
   if (!user) return null;
 
@@ -243,79 +233,65 @@ export function ProfileScreen({ navigation }: Props) {
         <Ionicons name="calendar-outline" size={16} color={colors.primary} />
         <Text style={styles.sectionTitle}>{t('profile.parties')}</Text>
       </View>
-      <View style={styles.statsModeSwitchWrap}>
-        <Pressable
-          style={[
-            styles.statsModeChip,
-            statsFormat === 'match' ? styles.statsModeChipActive : null,
-          ]}
-          onPress={() => setStatsFormat('match')}
-        >
-          <Text
-            style={[
-              styles.statsModeChipText,
-              statsFormat === 'match' ? styles.statsModeChipTextActive : null,
-            ]}
-          >
-            {t('match.eventMatch')}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[
-            styles.statsModeChip,
-            statsFormat === 'tournament' ? styles.statsModeChipActive : null,
-          ]}
-          onPress={() => setStatsFormat('tournament')}
-        >
-          <Text
-            style={[
-              styles.statsModeChipText,
-              statsFormat === 'tournament' ? styles.statsModeChipTextActive : null,
-            ]}
-          >
-            {t('match.eventTournament')}
-          </Text>
-        </Pressable>
-      </View>
-      <View style={styles.statsCard}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{showStatsLoading ? '–' : played}</Text>
-          <Text style={styles.statLabel}>{t('profile.played')}</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{showStatsLoading ? '–' : created}</Text>
-          <Text style={styles.statLabel}>{t('profile.created')}</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{showStatsLoading ? '–' : upcoming}</Text>
-          <Text style={styles.statLabel}>{t('profile.upcoming')}</Text>
-        </View>
-      </View>
 
-      <View style={styles.statisticsCard}>
-        <View style={styles.statisticsRow}>
-          <View style={styles.statisticsItem}>
-            <Text style={styles.statisticsValue}>{wins}</Text>
-            <Text style={styles.statisticsLabel}>{t('profile.wins')}</Text>
+      {/* Bloc Match / Tournoi */}
+      <View style={styles.tabBlock}>
+        <View style={styles.tabBlockHeaderTinted}>
+          <Pressable style={styles.tabBlockHeaderHalf} onPress={() => setStatsFormat('match')}>
+            <Text style={[
+              styles.tabBlockHeaderTitle,
+              statsFormat === 'match' ? styles.tabBlockHeaderActive : styles.tabBlockHeaderInactive,
+            ]}>{t('match.eventMatch')}</Text>
+          </Pressable>
+          <View style={styles.tabBlockHeaderDivider} />
+          <Pressable style={styles.tabBlockHeaderHalf} onPress={() => setStatsFormat('tournament')}>
+            <Text style={[
+              styles.tabBlockHeaderTitle,
+              statsFormat === 'tournament' ? styles.tabBlockHeaderActive : styles.tabBlockHeaderInactive,
+            ]}>{t('match.eventTournament')}</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.statsCard}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{showStatsLoading ? '–' : played}</Text>
+            <Text style={styles.statLabel}>{t('profile.played')}</Text>
           </View>
           <View style={styles.statDivider} />
-          <View style={styles.statisticsItem}>
-            <Text style={styles.statisticsValue}>{losses}</Text>
-            <Text style={styles.statisticsLabel}>{t('profile.losses')}</Text>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{showStatsLoading ? '–' : created}</Text>
+            <Text style={styles.statLabel}>{t('profile.created')}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{showStatsLoading ? '–' : upcoming}</Text>
+            <Text style={styles.statLabel}>{t('profile.upcoming')}</Text>
           </View>
         </View>
-        <View style={styles.statisticsInnerDivider} />
-        <View style={styles.statisticsRow}>
-          <View style={styles.statisticsItem}>
-            <Text style={styles.statisticsValue}>{winRate}%</Text>
-            <Text style={styles.statisticsLabel}>{t('profile.winRate')}</Text>
+
+        <View style={styles.statisticsGrid}>
+          <View style={styles.statisticsRow}>
+            <View style={styles.statisticsItem}>
+              <Text style={styles.statisticsValue}>{wins}</Text>
+              <Text style={styles.statisticsLabel}>{t('profile.wins')}</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statisticsItem}>
+              <Text style={styles.statisticsValue}>{losses}</Text>
+              <Text style={styles.statisticsLabel}>{t('profile.losses')}</Text>
+            </View>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statisticsItem}>
-            <Text style={styles.statisticsValue}>{streak}</Text>
-            <Text style={styles.statisticsLabel}>{t('profile.currentStreak')}</Text>
+          <View style={styles.statisticsInnerDivider} />
+          <View style={styles.statisticsRow}>
+            <View style={styles.statisticsItem}>
+              <Text style={styles.statisticsValue}>{winRate}%</Text>
+              <Text style={styles.statisticsLabel}>{t('profile.winRate')}</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statisticsItem}>
+              <Text style={styles.statisticsValue}>{streak}</Text>
+              <Text style={styles.statisticsLabel}>{t('profile.currentStreak')}</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -434,9 +410,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     overflow: 'visible',
   },
-  skillPositionRowBelow: {
-    marginTop: spacing.sm,
-  },
   clubBlock: {
     marginHorizontal: spacing.md,
     marginTop: spacing.md,
@@ -537,45 +510,89 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
   },
-  statsModeSwitchWrap: {
-    flexDirection: 'row',
+  tabBlock: {
     marginHorizontal: spacing.md,
-    marginTop: spacing.xs,
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
+    marginTop: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    overflow: 'hidden',
+    ...shadows.card,
   },
-  statsModeChip: {
+  tabBlockHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tabBlockHeaderTinted: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary + '12',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tabBlockHeaderHalf: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.sm + 4,
-    backgroundColor: colors.surface,
+    paddingVertical: spacing.sm + 2,
   },
-  statsModeChipActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '22',
+  tabBlockHeaderDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: colors.border,
   },
-  statsModeChipText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  statsModeChipTextActive: {
+  tabBlockHeaderTintedTitle: {
+    fontSize: 14,
+    fontWeight: '800',
     color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  tabBlockHeaderTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  tabBlockHeaderActive: {
+    color: colors.primary,
+  },
+  tabBlockHeaderInactive: {
+    color: colors.textMuted,
+  },
+  tabBlockHeaderSep: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  tabBlockContent: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  tabBlockRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  tabBlockLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  tabBlockValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+    flexShrink: 1,
   },
   statsCard: {
     flexDirection: 'row',
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.sm,
     padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.card,
   },
   statItem: {
     flex: 1,
@@ -598,15 +615,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     marginVertical: 4,
   },
-  statisticsCard: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.md,
+  statisticsGrid: {
     padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.card,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   memberSinceText: {
     ...typography.caption,

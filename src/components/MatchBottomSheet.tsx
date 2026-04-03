@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Animated, Easing, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { PlayerCountBadge } from './PlayerCountBadge';
 import { SkillBadge } from './SkillBadge';
 import { localeToBcp47, useTranslation } from '../i18n';
@@ -66,6 +66,31 @@ export function MatchBottomSheet({
     return () => loop.stop();
   }, [tournament, isLive, borderPulse]);
 
+  const translateY = useRef(new Animated.Value(0)).current;
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 8,
+      onPanResponderMove: (_, g) => {
+        if (g.dy > 0) translateY.setValue(g.dy);
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 80 || g.vy > 0.5) {
+          Animated.timing(translateY, {
+            toValue: 500,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(onClose);
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    }),
+  ).current;
+
   const volleyLabel =
     match.volley_type === 'beach'
       ? t('createMatch.beachVolley')
@@ -85,7 +110,10 @@ export function MatchBottomSheet({
   });
 
   return (
-    <View style={styles.container}>
+    <Animated.View
+      style={[styles.container, { transform: [{ translateY }] }]}
+      {...panResponder.panHandlers}
+    >
       <View style={styles.handle} />
 
       <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -118,7 +146,10 @@ export function MatchBottomSheet({
         <SkillBadge level={match.skill_level} />
       </View>
 
-      <Text style={styles.volleyText}>{volleyLabel}</Text>
+      <View style={styles.volleyRow}>
+        <MaterialCommunityIcons name="volleyball" size={16} color={colors.textSecondary} />
+        <Text style={styles.volleyText}>{volleyLabel}</Text>
+      </View>
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -177,7 +208,7 @@ export function MatchBottomSheet({
             <Text style={styles.actionIconText}>{t('match.viewTeamsBoard')}</Text>
           </TouchableOpacity>
         ) : null}
-        {onScorePress && (!isUpcoming || isCreator) ? (
+        {onScorePress ? (
           <TouchableOpacity
             style={styles.actionIconBtn}
             onPress={onScorePress}
@@ -187,10 +218,11 @@ export function MatchBottomSheet({
             <Text style={styles.actionIconText}>{t('match.scoreButton')}</Text>
           </TouchableOpacity>
         ) : null}
-        {tournament && onCourtsPress && (isLive || isCreator) ? (
+        {tournament && onCourtsPress ? (
           <TouchableOpacity
             onPress={onCourtsPress}
             activeOpacity={0.8}
+            style={{ flex: 1 }}
           >
             <Animated.View
               style={[
@@ -220,7 +252,7 @@ export function MatchBottomSheet({
           <Text style={styles.viewButtonText}>{t('match.viewEvent')}</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -289,12 +321,17 @@ const styles = StyleSheet.create({
   eventPillTextTournament: {
     color: colors.matchTournament,
   },
+  volleyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: spacing.md,
+  },
   volleyText: {
     ...typography.bodySmall,
     fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
-    marginBottom: spacing.md,
   },
   header: {
     marginBottom: spacing.md,

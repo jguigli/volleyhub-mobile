@@ -110,6 +110,8 @@ export interface MatchParticipant {
   joinedAt: string;
   /** 0 = équipe A, 1 = équipe B, null / undefined = non assigné */
   teamIndex?: number | null;
+  /** Position dans l'équipe (0-based) */
+  slotIndex?: number | null;
   user: Pick<
     User,
     'id' | 'username' | 'profilePicture' | 'skillLevel' | 'position'

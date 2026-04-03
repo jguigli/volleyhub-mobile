@@ -188,7 +188,7 @@ export function MyMatchesScreen({ navigation }: Props) {
         ))}
       </View>
 
-      {isLoading ? (
+      {isLoading && !allMatches ? (
         <View style={styles.centered}>
           <ActivityIndicator color={colors.primary} size="large" />
         </View>

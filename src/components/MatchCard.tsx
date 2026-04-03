@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { localeToBcp47, useTranslation } from '../i18n';
 import { matchCardVenuePlace, isTournamentMatch } from '../utils/matchDisplay';
 import { useAuthStore } from '../store/auth.store';
@@ -148,8 +148,9 @@ export function MatchCard({
       onPress={() => onPress(match)}
       activeOpacity={0.7}
     >
+      {/* Row 1: event pill + skill badge + status */}
       <View style={styles.topRow}>
-        <View style={styles.eventMetaLeft}>
+        <View style={styles.topRowLeft}>
           <View
             style={[
               styles.eventPill,
@@ -167,7 +168,10 @@ export function MatchCard({
                 : t('match.eventMatch')}
             </Text>
           </View>
-          <Text style={styles.volleyTypeText}>{volleyTypeLabel}</Text>
+          <Text style={styles.topRowDash}>—</Text>
+          <View style={styles.skillBadgeWrap}>
+            <SkillBadge level={match.skill_level} small />
+          </View>
         </View>
         <View style={styles.headerStatusRail}>
           <Animated.View
@@ -216,80 +220,49 @@ export function MatchCard({
         </View>
       </View>
 
-      <View style={styles.locationRow}>
-        <Ionicons
-          name="location-outline"
-          size={15}
-          color={colors.textSecondary}
-          style={styles.locationIcon}
-        />
-        <Text style={styles.locationText} numberOfLines={2}>
-          {venuePlace}
+      {/* Row 2: volley type */}
+      <View style={styles.volleyTypeRow}>
+        <MaterialCommunityIcons name="volleyball" size={14} color={colors.textSecondary} />
+        <Text style={styles.volleyTypeText}>{volleyTypeLabel}</Text>
+      </View>
+
+      {/* Row 3: location */}
+      <View style={styles.metaLine}>
+        <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+        <Text style={styles.metaLineText} numberOfLines={1}>{venuePlace}</Text>
+      </View>
+
+      {/* Row 4: date */}
+      <View style={styles.metaLine}>
+        <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
+        <Text style={styles.metaLineText} numberOfLines={1}>
+          {isToday
+            ? t('match.todayTime', { time: timeStr })
+            : t('match.dateAtTime', { date: dateStr, time: timeStr })}
         </Text>
       </View>
 
-      <View style={styles.meta}>
-        <View style={styles.metaItem}>
-          <Ionicons
-            name={isToday ? 'today-outline' : 'calendar-outline'}
-            size={14}
-            color={colors.textSecondary}
-          />
-          <Text
-            style={[
-              styles.metaText,
-              isToday && { color: colors.primary, fontWeight: '600' },
-            ]}
-          >
-            {isToday
-              ? t('match.todayTime', { time: timeStr })
-              : t('match.dateAtTime', { date: dateStr, time: timeStr })}
+      {/* Row 5: creator */}
+      {!hideCreatorRow ? (
+        <View style={styles.metaLine}>
+          <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
+          <Text style={styles.metaLineText}>
+            {match.creator_username ?? '—'}
           </Text>
         </View>
-        <View style={[styles.metaItem, styles.skillMetaItem]}>
-          <Ionicons
-            name="flash-outline"
-            size={14}
-            color={colors.textSecondary}
-          />
-          <SkillBadge level={match.skill_level} small />
-        </View>
-        {!hideCreatorRow ? (
-          <View style={styles.metaItem}>
-            <Ionicons
-              name="person-outline"
-              size={14}
-              color={colors.textSecondary}
-            />
-            {onCreatorPress ? (
-              <TouchableOpacity
-                onPress={() => onCreatorPress(match.creator_id)}
-                hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-              >
-                <Text style={[styles.metaText, styles.creatorLink]}>
-                  {match.creator_username ?? '—'}
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <Text style={styles.metaText}>
-                {match.creator_username ?? '—'}
-              </Text>
-            )}
-          </View>
-        ) : null}
+      ) : null}
+
+      {/* Row 6: players */}
+      <View style={styles.metaLine}>
+        <Ionicons name="people-outline" size={14} color={colors.textSecondary} />
+        <PlayerCountBadge
+          matchId={match.id}
+          currentPlayers={match.current_players}
+          maxPlayers={match.max_players}
+        />
       </View>
 
       <View style={styles.footer}>
-        <View style={styles.footerLeft}>
-          <Text style={styles.playerCountLabel} numberOfLines={1}>
-            {t('match.listPlayerCountPrefix')}
-          </Text>
-          <PlayerCountBadge
-            matchId={match.id}
-            currentPlayers={match.current_players}
-            maxPlayers={match.max_players}
-          />
-        </View>
         <View style={styles.footerMiddle}>
           {match.distance !== undefined ? (
             <Text style={styles.footerDistance} numberOfLines={1}>
@@ -308,10 +281,10 @@ export function MatchCard({
               accessibilityRole="button"
               accessibilityLabel={t('match.viewTeamsBoard')}
             >
-              <Ionicons name="people-outline" size={28} color={colors.primary} />
+              <MaterialCommunityIcons name="account-group-outline" size={28} color={colors.primary} />
             </Pressable>
           ) : null}
-          {onScorePress && (timingBadge !== 'upcoming' || isCreator) ? (
+          {onScorePress ? (
             <Pressable
               style={styles.footerIconBtn}
               onPress={() => onScorePress(match)}
@@ -322,7 +295,7 @@ export function MatchCard({
               <Ionicons name="trophy-outline" size={28} color={colors.primary} />
             </Pressable>
           ) : null}
-          {tournament && onCourtsPress && (timingBadge === 'live' || isCreator) ? (
+          {tournament && onCourtsPress ? (
             <Pressable
               onPress={() => onCourtsPress(match)}
               hitSlop={{ top: 6, bottom: 6, left: 8, right: 8 }}
@@ -396,70 +369,52 @@ const styles = StyleSheet.create({
   eventPillTextTournament: {
     color: colors.matchTournament,
   },
-  eventMetaLeft: {
-    gap: 6,
-    marginBottom: spacing.sm,
+  topRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexShrink: 1,
+  },
+  skillBadgeWrap: {
+    alignSelf: 'center',
+  },
+  topRowDash: {
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  volleyTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: spacing.md,
   },
   volleyTypeText: {
     ...typography.bodySmall,
     color: colors.textSecondary,
     fontWeight: '600',
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    marginTop: spacing.xs,
-  },
-  locationIcon: {
-    marginTop: 2,
-  },
-  locationText: {
-    ...typography.body,
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-    flex: 1,
-  },
-  meta: {
-    gap: 4,
-  },
-  metaItem: {
+  metaLine: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  skillMetaItem: {
-    marginTop: spacing.xs,
-  },
-  metaText: {
-    ...typography.bodySmall,
-    fontSize: 15,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-    gap: spacing.sm,
-  },
-  footerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexShrink: 0,
-    maxWidth: '46%',
-  },
-  playerCountLabel: {
-    ...typography.caption,
-    fontSize: 11,
+  metaLineText: {
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
     flexShrink: 1,
   },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+  },
   footerMiddle: {
     flex: 1,
     minWidth: 0,
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     paddingHorizontal: spacing.xs,
   },
   footerDistance: {
@@ -475,9 +430,9 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   footerIconBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -525,9 +480,5 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     lineHeight: 14,
-  },
-  creatorLink: {
-    color: colors.primary,
-    fontWeight: '600',
   },
 });

@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
+
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +14,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/auth.store';
@@ -40,6 +45,20 @@ export function RegisterScreen({ navigation }: Props) {
   const [position, setPosition] = useState<Position>('any');
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <Pressable
+          onPress={() => navigation.navigate('Login')}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ padding: 4 }}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
+        </Pressable>
+      ),
+    });
+  }, [navigation]);
 
   const handleRegister = async () => {
     if (!username.trim() || !email.trim() || !password.trim()) {
@@ -81,7 +100,15 @@ export function RegisterScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Text style={styles.logo}>🏐</Text>
+          <View style={styles.logoWrap}>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logoImage}
+              resizeMode="cover"
+              accessible
+              accessibilityLabel="VolleyHub Logo"
+            />
+          </View>
           <Text style={styles.title}>{t('auth.createAccountTitle')}</Text>
           <Text style={styles.subtitle}>{t('auth.joinCommunity')}</Text>
         </View>
@@ -143,23 +170,21 @@ export function RegisterScreen({ navigation }: Props) {
           </View>
 
           <Text style={styles.label}>{t('auth.position')}</Text>
-          <View style={styles.chips}>
-            {POSITIONS.map((pos) => (
-              <TouchableOpacity
-                key={pos}
-                style={[styles.chip, position === pos && styles.chipSelected]}
-                onPress={() => setPosition(pos)}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    position === pos && styles.chipTextSelected,
-                  ]}
-                >
-                  {t(`auth.positions.${pos}`)}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.pickerShell}>
+            <Picker
+              selectedValue={position}
+              onValueChange={(v) => setPosition(v as Position)}
+              style={styles.picker}
+              itemStyle={Platform.OS === 'ios' ? styles.pickerItemIOS : undefined}
+            >
+              {POSITIONS.map((pos) => (
+                <Picker.Item
+                  key={pos}
+                  label={t(`auth.positions.${pos}`)}
+                  value={pos}
+                />
+              ))}
+            </Picker>
           </View>
 
           <TouchableOpacity
@@ -197,16 +222,23 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
-    justifyContent: 'center',
+    paddingTop: spacing.xl * 3,
     padding: spacing.lg,
   },
   header: {
     alignItems: 'center',
     marginBottom: spacing.xl,
   },
-  logo: {
-    fontSize: 48,
-    marginBottom: spacing.sm,
+  logoWrap: {
+    width: 130,
+    height: 130,
+    borderRadius: 28,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     ...typography.h1,
@@ -259,6 +291,23 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: colors.white,
+  },
+  pickerShell: {
+    marginTop: spacing.xs,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+  },
+  picker: {
+    ...(Platform.OS === 'ios'
+      ? { height: 160 }
+      : { color: colors.text, backgroundColor: colors.surface }),
+  },
+  pickerItemIOS: {
+    color: colors.text,
+    fontSize: 17,
   },
   button: {
     backgroundColor: colors.primary,

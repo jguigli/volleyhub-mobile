@@ -162,7 +162,7 @@ export function UserProfileScreen({ route, navigation }: Props) {
     }
   };
 
-  const canShowAddButton = currentUser && !isFollowing && !outgoing && !incoming;
+  const canShowAddButton = currentUser && !isOwnProfile && !isFollowing && !outgoing && !incoming;
 
   const handleAcceptIncoming = async () => {
     try {
@@ -211,7 +211,7 @@ export function UserProfileScreen({ route, navigation }: Props) {
             >
               <Text style={styles.inlineFollowRelations}>{relationsText}</Text>
             </Pressable>
-            {isFollowing ? (
+            {isFollowing && !isOwnProfile ? (
               <Pressable
                 style={styles.inlineFollowAddBtn}
                 onPress={openUnfollow}
@@ -242,7 +242,7 @@ export function UserProfileScreen({ route, navigation }: Props) {
                   <Ionicons name="person-add-outline" size={24} color={colors.primary} />
                 )}
               </Pressable>
-            ) : outgoing ? (
+            ) : outgoing && !isOwnProfile ? (
               <Pressable
                 style={styles.inlineFollowAddBtn}
                 onPress={handleCancelRequest}
@@ -269,7 +269,7 @@ export function UserProfileScreen({ route, navigation }: Props) {
         </View>
       ) : null}
 
-      {incoming && currentUser ? (
+      {incoming && currentUser && !isOwnProfile ? (
         <View style={styles.incomingBanner}>
           <Text style={styles.incomingText}>
             {t('profile.incomingRequestBanner', { name: profile.username })}

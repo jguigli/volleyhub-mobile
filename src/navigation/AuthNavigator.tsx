@@ -13,7 +13,7 @@ export function AuthNavigator() {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: true, headerTransparent: true, headerTitle: '' }} />
     </Stack.Navigator>
   );
 }

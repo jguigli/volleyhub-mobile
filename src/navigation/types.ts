@@ -82,10 +82,15 @@ export type ProfileStackParamList = {
   Notifications: undefined;
 };
 
+export type NotificationsStackParamList = {
+  Notifications: undefined;
+};
+
 export type MainTabParamList = {
   FindTab: NavigatorScreenParams<FindStackParamList>;
-  MapTab: NavigatorScreenParams<MapStackParamList>;
   MyTab: NavigatorScreenParams<MyStackParamList>;
+  MapTab: NavigatorScreenParams<MapStackParamList>;
+  NotificationsTab: NavigatorScreenParams<NotificationsStackParamList>;
   ProfileTab: NavigatorScreenParams<ProfileStackParamList>;
 };
 

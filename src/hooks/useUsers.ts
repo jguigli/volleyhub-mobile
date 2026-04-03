@@ -24,7 +24,8 @@ export function usePublicProfile(userId: string) {
     queryKey: [USERS_KEY, userId, currentUserId ?? 'anon'],
     queryFn: () => usersApi.getPublicProfile(userId),
     enabled: !!userId,
-    staleTime: 60_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }
 

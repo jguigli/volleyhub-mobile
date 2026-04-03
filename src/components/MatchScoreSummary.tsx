@@ -23,12 +23,6 @@ export function MatchScoreSummary({ match, embedded }: Props) {
 
   return (
     <View style={embedded ? styles.wrapEmbedded : styles.wrap}>
-      <View style={styles.header}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="trophy-outline" size={22} color={colors.primary} />
-        </View>
-        <Text style={styles.title}>{t('match.scoreBlockTitle')}</Text>
-      </View>
       {tournament ? (
         (() => {
           const n = match.teamCount ?? 0;
