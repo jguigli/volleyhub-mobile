@@ -214,7 +214,7 @@ export function MatchChatScreen({ route, navigation }: Props) {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {loading ? (
@@ -243,6 +243,10 @@ export function MatchChatScreen({ route, navigation }: Props) {
           }
           renderItem={({ item }) => {
             const mine = item.userId === user?.id;
+            const timeLabel = new Date(item.createdAt).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
             return (
               <View
                 style={[
@@ -266,6 +270,14 @@ export function MatchChatScreen({ route, navigation }: Props) {
                     ]}
                   >
                     {item.body}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.bubbleTime,
+                      mine ? styles.bubbleTimeMine : styles.bubbleTimeOther,
+                    ]}
+                  >
+                    {timeLabel}
                   </Text>
                 </View>
               </View>
@@ -386,6 +398,14 @@ const styles = StyleSheet.create({
   },
   bubbleTextMine: { color: colors.white },
   bubbleTextOther: { color: colors.text },
+  bubbleTime: {
+    fontSize: 10,
+    fontWeight: '500',
+    alignSelf: 'flex-end',
+    marginTop: 4,
+  },
+  bubbleTimeMine: { color: 'rgba(255,255,255,0.55)' },
+  bubbleTimeOther: { color: colors.textMuted },
   composerClosed: {
     flexDirection: 'row',
     alignItems: 'center',

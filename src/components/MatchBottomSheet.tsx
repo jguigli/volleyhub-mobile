@@ -40,31 +40,23 @@ export function MatchBottomSheet({
   const isLive = !isPast && Date.now() >= scheduledMs;
   const isUpcoming = !isPast && !isLive;
 
-  const borderPulse = useRef(new Animated.Value(0)).current;
+  const isFull = match.status === 'full';
+  const pulseTeamsBtn = isUpcoming && !isFull;
+  const teamsBorderPulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    if (!tournament || !isLive) {
-      borderPulse.setValue(0);
+    if (!pulseTeamsBtn) {
+      teamsBorderPulse.setValue(0);
       return;
     }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(borderPulse, {
-          toValue: 1,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
-        }),
-        Animated.timing(borderPulse, {
-          toValue: 0,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
-        }),
+        Animated.timing(teamsBorderPulse, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(teamsBorderPulse, { toValue: 0, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
       ]),
     );
     loop.start();
     return () => loop.stop();
-  }, [tournament, isLive, borderPulse]);
+  }, [pulseTeamsBtn, teamsBorderPulse]);
 
   const translateY = useRef(new Animated.Value(0)).current;
   const panResponder = useRef(
@@ -200,12 +192,25 @@ export function MatchBottomSheet({
       <View style={styles.actionsRow}>
         {onTeamsPress ? (
           <TouchableOpacity
-            style={styles.actionIconBtn}
             onPress={onTeamsPress}
             activeOpacity={0.8}
+            style={{ flex: 1 }}
           >
-            <Ionicons name="people-outline" size={24} color={colors.primary} />
-            <Text style={styles.actionIconText}>{t('match.viewTeamsBoard')}</Text>
+            <Animated.View
+              style={[
+                styles.actionIconBtn,
+                pulseTeamsBtn && {
+                  borderColor: teamsBorderPulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [colors.primary + '55', colors.primary],
+                  }),
+                  borderWidth: 2,
+                },
+              ]}
+            >
+              <Ionicons name="people-outline" size={24} color={colors.primary} />
+              <Text style={styles.actionIconText}>{t('match.viewTeamsBoard')}</Text>
+            </Animated.View>
           </TouchableOpacity>
         ) : null}
         {onScorePress ? (
@@ -220,25 +225,12 @@ export function MatchBottomSheet({
         ) : null}
         {tournament && onCourtsPress ? (
           <TouchableOpacity
+            style={styles.actionIconBtn}
             onPress={onCourtsPress}
             activeOpacity={0.8}
-            style={{ flex: 1 }}
           >
-            <Animated.View
-              style={[
-                styles.actionIconBtn,
-                isLive && {
-                  borderColor: borderPulse.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [colors.primary + '55', colors.primary],
-                  }),
-                  borderWidth: 2,
-                },
-              ]}
-            >
-              <Ionicons name="grid-outline" size={24} color={colors.primary} />
-              <Text style={styles.actionIconText}>{t('match.viewTournamentCourts')}</Text>
-            </Animated.View>
+            <Ionicons name="grid-outline" size={24} color={colors.primary} />
+            <Text style={styles.actionIconText}>{t('match.viewTournamentCourts')}</Text>
           </TouchableOpacity>
         ) : null}
       </View>

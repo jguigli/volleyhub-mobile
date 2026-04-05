@@ -1,7 +1,8 @@
-import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -55,11 +56,12 @@ export function EventScoreScreen({ route, navigation }: Props) {
   const { matchId } = route.params;
   const { t } = useTranslation();
   const currentUser = useAuthStore((s) => s.user);
-  const { data: match, isLoading, error } = useMatch(matchId);
+  const { data: match, isLoading, error, refetch, isFetching } = useMatch(matchId);
   const manageMut = useManageMatch();
 
   const [setRows, setSetRows] = useState<SetRow[]>([]);
   const [initialized, setInitialized] = useState(false);
+  const initialSetRowsRef = useRef<SetRow[]>([]);
 
   useEffect(() => {
     setInitialized(false);
@@ -82,12 +84,30 @@ export function EventScoreScreen({ route, navigation }: Props) {
         });
       }
       setSetRows(rows);
+      initialSetRowsRef.current = rows.map((r) => ({ ...r }));
     }
     setInitialized(true);
   }, [match, initialized]);
 
   const canManage = Boolean(match && currentUser?.id === match.creatorId);
   const tournament = match ? isTournamentMatch(match) : false;
+
+  const isOngoing = Boolean(
+    match &&
+      (match.status === 'open' || match.status === 'full') &&
+      new Date(match.scheduledAt).getTime() <= Date.now(),
+  );
+  const isUpcoming = Boolean(
+    match &&
+      (match.status === 'open' || match.status === 'full') &&
+      new Date(match.scheduledAt).getTime() > Date.now(),
+  );
+
+  const isDirty = useMemo(() => {
+    const init = initialSetRowsRef.current;
+    if (init.length === 0 || init.length !== setRows.length) return false;
+    return setRows.some((row, i) => row.teamA !== init[i].teamA || row.teamB !== init[i].teamB);
+  }, [setRows]);
   const courtCount = Math.max(1, match?.tournamentCourtCount ?? 1);
   const totalSets = Math.max(1, match?.matchSets ?? 3);
   const setsToWin = Math.floor(totalSets / 2) + 1;
@@ -258,7 +278,7 @@ export function EventScoreScreen({ route, navigation }: Props) {
     const isCompleted = match.status === 'completed';
 
     return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} />}>
         {noGames && isCompleted ? (
           <View style={styles.notEnoughTeamsCard}>
             <Ionicons name="alert-circle-outline" size={32} color={colors.error} />
@@ -293,7 +313,7 @@ export function EventScoreScreen({ route, navigation }: Props) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={isFetching} onRefresh={() => { setInitialized(false); refetch(); }} />}>
       <MatchScoreSummary match={match} />
 
       <View style={styles.setsSection}>
@@ -341,13 +361,14 @@ export function EventScoreScreen({ route, navigation }: Props) {
                 aWins && styles.scoreInputWinner,
                 (!canManage || rowLocked) && styles.scoreInputReadOnly,
                 rowLocked && styles.scoreInputLocked,
+                isUpcoming && styles.scoreInputUpcoming,
               ]}
               keyboardType="number-pad"
-              editable={canManage && !rowLocked}
+              editable={canManage && !rowLocked && !isUpcoming}
               value={row.teamA}
               onChangeText={(v) => onSetChange(i, 'teamA', v)}
               placeholder="0"
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={isOngoing ? colors.text : colors.textMuted}
             />
             <Text style={styles.setDash}>—</Text>
             <TextInput
@@ -356,13 +377,14 @@ export function EventScoreScreen({ route, navigation }: Props) {
                 bWins && styles.scoreInputWinner,
                 (!canManage || rowLocked) && styles.scoreInputReadOnly,
                 rowLocked && styles.scoreInputLocked,
+                isUpcoming && styles.scoreInputUpcoming,
               ]}
               keyboardType="number-pad"
-              editable={canManage && !rowLocked}
+              editable={canManage && !rowLocked && !isUpcoming}
               value={row.teamB}
               onChangeText={(v) => onSetChange(i, 'teamB', v)}
               placeholder="0"
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={isOngoing ? colors.text : colors.textMuted}
             />
           </View>
         )})}
@@ -381,7 +403,7 @@ export function EventScoreScreen({ route, navigation }: Props) {
         </View>
       </View>
 
-      {canManage ? (
+      {canManage && isDirty ? (
         <View style={styles.actions}>
           <TouchableOpacity
             style={[styles.primaryBtn, manageMut.isPending && styles.btnDisabled]}
@@ -656,6 +678,10 @@ const styles = StyleSheet.create({
   },
   scoreInputLocked: {
     borderColor: colors.border + '88',
+  },
+  scoreInputUpcoming: {
+    backgroundColor: colors.background,
+    opacity: 0.5,
   },
   setDash: { color: colors.textMuted, fontSize: 20 },
   totalSetsCard: {

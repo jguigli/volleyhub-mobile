@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,8 +19,9 @@ import { useTranslation } from '../i18n';
 import { isTournamentMatch } from '../utils/matchDisplay';
 import { colors, spacing, borderRadius, typography, shadows } from '../theme';
 import { useBottomInset } from '../hooks/useBottomInset';
+import { useSocket } from '../hooks/useSocket';
 import type { FindStackParamList } from '../navigation/types';
-import type { MatchParticipant, Position } from '../types';
+import type { MatchParticipant, Position, SkillLevel } from '../types';
 
 type Props = NativeStackScreenProps<FindStackParamList, 'MatchTeamsBoard'>;
 
@@ -70,14 +71,43 @@ function padTeamSlots(
   return out;
 }
 
-export function MatchTeamsBoardScreen({ route }: Props) {
+const SKILL_NUM: Record<SkillLevel, number> = { beginner: 1, intermediate: 2, advanced: 3 };
+const NUM_SKILL: Record<number, SkillLevel> = { 1: 'beginner', 2: 'intermediate', 3: 'advanced' };
+
+function averageSkillLevel(players: MatchParticipant[]): SkillLevel | null {
+  const withSkill = players.filter((p) => p.user?.skillLevel);
+  if (withSkill.length === 0) return null;
+  const sum = withSkill.reduce((acc, p) => acc + (SKILL_NUM[p.user.skillLevel] ?? 2), 0);
+  return NUM_SKILL[Math.round(sum / withSkill.length)] ?? 'intermediate';
+}
+
+export function MatchTeamsBoardScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
   const bottomInset = useBottomInset();
   const { matchId } = route.params;
   const user = useAuthStore((s) => s.user);
-  const { data: match, isLoading, error } = useMatch(matchId);
+  const { data: match, isLoading, error, refetch } = useMatch(matchId);
   const setTeamMut = useSetMyTeam();
   const manageMut = useManageMatch();
+  const { subscribeToMatch } = useSocket();
+
+  useEffect(() => {
+    return subscribeToMatch(matchId, () => refetch());
+  }, [matchId, refetch, subscribeToMatch]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          onPress={() => navigation.navigate('TeamsGuide', { tournament: match ? isTournamentMatch(match) : false })}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ padding: spacing.xs, marginRight: spacing.sm }}
+        >
+          <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
+        </Pressable>
+      ),
+    });
+  }, [navigation, match]);
 
   const [teamByUser, setTeamByUser] = useState<Record<string, number | null>>({});
 
@@ -203,16 +233,8 @@ export function MatchTeamsBoardScreen({ route }: Props) {
     }
   }, [manageMut, match, t, teamByUser, user]);
 
-  const lastSelfTeamTapRef = useRef(0);
-  const DOUBLE_TAP_MS = 350;
-
   const unassignSelfFromTeam = useCallback(async () => {
-    if (!user) {
-      return;
-    }
-    if (teamsLocked) {
-      return;
-    }
+    if (!user || teamsLocked) return;
     try {
       await setTeamMut.mutateAsync({ matchId, teamIndex: null });
     } catch (e: unknown) {
@@ -220,16 +242,6 @@ export function MatchTeamsBoardScreen({ route }: Props) {
       Alert.alert(t('common.error'), msg);
     }
   }, [matchId, setTeamMut, t, user, teamsLocked]);
-
-  const onSelfTeamSlotPress = useCallback(() => {
-    const now = Date.now();
-    if (now - lastSelfTeamTapRef.current < DOUBLE_TAP_MS) {
-      lastSelfTeamTapRef.current = 0;
-      void unassignSelfFromTeam();
-    } else {
-      lastSelfTeamTapRef.current = now;
-    }
-  }, [unassignSelfFromTeam]);
 
   if (isLoading) {
     return (
@@ -347,20 +359,19 @@ export function MatchTeamsBoardScreen({ route }: Props) {
           </View>
         </>
       );
-      if (isMe) {
-        return (
-          <Pressable
-            key={slot.userId}
-            style={styles.slotFilled}
-            onPress={onSelfTeamSlotPress}
-          >
-            {body}
-          </Pressable>
-        );
-      }
       return (
         <View key={slot.userId} style={styles.slotFilled}>
           {body}
+          {isMe && !teamsLocked ? (
+            <Pressable
+              style={styles.slotRemoveBtn}
+              onPress={unassignSelfFromTeam}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              disabled={setTeamMut.isPending}
+            >
+              <Ionicons name="close" size={16} color={colors.error} />
+            </Pressable>
+          ) : null}
         </View>
       );
     };
@@ -377,6 +388,9 @@ export function MatchTeamsBoardScreen({ route }: Props) {
             <Text style={styles.colHeadText}>
               {t('match.teamN', { n: String(teamIdx + 1) })}
             </Text>
+            {averageSkillLevel(teamPlayers) != null ? (
+              <SkillBadge level={averageSkillLevel(teamPlayers)!} small />
+            ) : null}
             <Text style={styles.colCount}>
               {teamPlayers.length}/{size}
             </Text>
@@ -412,6 +426,18 @@ export function MatchTeamsBoardScreen({ route }: Props) {
         </View>
       );
     };
+
+    const noGames = !match.tournamentGames?.length;
+    const isCompleted = match.status === 'completed';
+
+    if (noGames && isCompleted) {
+      return (
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={32} color={colors.error} />
+          <Text style={styles.notEnoughText}>{t('match.tournamentNotEnoughTeams')}</Text>
+        </View>
+      );
+    }
 
     return (
       <ScrollView
@@ -550,16 +576,19 @@ export function MatchTeamsBoardScreen({ route }: Props) {
           </View>
         </>
       );
-      if (isMe) {
-        return (
-          <Pressable key={key} style={styles.slotFilled} onPress={onSelfTeamSlotPress}>
-            {body}
-          </Pressable>
-        );
-      }
       return (
         <View key={key} style={styles.slotFilled}>
           {body}
+          {isMe && !teamsLocked ? (
+            <Pressable
+              style={styles.slotRemoveBtn}
+              onPress={unassignSelfFromTeam}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              disabled={setTeamMut.isPending}
+            >
+              <Ionicons name="close" size={16} color={colors.error} />
+            </Pressable>
+          ) : null}
         </View>
       );
     }
@@ -594,6 +623,9 @@ export function MatchTeamsBoardScreen({ route }: Props) {
         <View style={[styles.col, myTeam === 0 ? styles.colMine : styles.colA]}>
           <View style={[styles.colHead, myTeam === 0 ? styles.colHeadMine : styles.colHeadA]}>
             <Text style={styles.colHeadText}>{t('match.teamA')}</Text>
+            {averageSkillLevel(teamAPlayers) != null ? (
+              <SkillBadge level={averageSkillLevel(teamAPlayers)!} small />
+            ) : null}
             <Text style={styles.colCount}>
               {teamAPlayers.length}/{slotsPerTeam}
             </Text>
@@ -605,6 +637,9 @@ export function MatchTeamsBoardScreen({ route }: Props) {
         <View style={[styles.col, myTeam === 1 ? styles.colMine : styles.colB]}>
           <View style={[styles.colHead, myTeam === 1 ? styles.colHeadMine : styles.colHeadB]}>
             <Text style={styles.colHeadText}>{t('match.teamB')}</Text>
+            {averageSkillLevel(teamBPlayers) != null ? (
+              <SkillBadge level={averageSkillLevel(teamBPlayers)!} small />
+            ) : null}
             <Text style={styles.colCount}>
               {teamBPlayers.length}/{slotsPerTeam}
             </Text>
@@ -990,6 +1025,13 @@ const styles = StyleSheet.create({
     color: colors.error,
     textAlign: 'center',
   },
+  notEnoughText: {
+    ...typography.body,
+    color: colors.error,
+    textAlign: 'center',
+    fontWeight: '600',
+    marginTop: spacing.md,
+  },
   board: {
     flexDirection: 'column',
     alignItems: 'stretch',
@@ -1022,6 +1064,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: spacing.xs,
   },
   colHeadA: {
     backgroundColor: colors.surface,
@@ -1060,6 +1103,15 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  slotRemoveBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.error + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 'auto',
   },
   slotEmpty: {
     flexDirection: 'row',
@@ -1214,6 +1266,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
     backgroundColor: colors.surface,
+    gap: spacing.xs,
   },
   slotEmptyReadonly: {
     flexDirection: 'row',

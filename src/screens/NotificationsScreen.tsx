@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
+  Animated,
   Image,
+  PanResponder,
   Pressable,
+  SectionList,
   StyleSheet,
   Text,
   View,
@@ -11,26 +13,124 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { ProfileStackParamList } from '../navigation/types';
+import { NotificationsStackParamList } from '../navigation/types';
 import {
   useAcceptFollowRequest,
   useDeclineFollowRequest,
   useIncomingFollowRequests,
 } from '../hooks/useUsers';
 import { useDismissIncomingEventInvite, useIncomingEventInvites } from '../hooks/useMatches';
+import { useNotificationsList, useDismissNotification } from '../hooks/useNotificationsList';
 import { navigateToUserProfile } from '../navigation/navigateToUserProfile';
 import { useAuthStore } from '../store/auth.store';
 import { useTranslation } from '../i18n';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import { useBottomInset } from '../hooks/useBottomInset';
 import type { IncomingFollowRequestItem } from '../api/users.api';
+import type { GeneralNotification, NotificationType } from '../types';
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications';
 
-type Props = NativeStackScreenProps<ProfileStackParamList, 'Notifications'>;
+type Props = NativeStackScreenProps<NotificationsStackParamList, 'Notifications'>;
 type InviteItem = NonNullable<ReturnType<typeof useIncomingEventInvites>['data']>[number];
 type RowItem =
   | { kind: 'follow_request'; key: string; item: IncomingFollowRequestItem }
-  | { kind: 'event_invite'; key: string; item: InviteItem };
+  | { kind: 'event_invite'; key: string; item: InviteItem }
+  | { kind: 'general'; key: string; item: GeneralNotification };
+
+const NOTIF_ICON: Record<NotificationType, string> = {
+  player_joined: 'person-add',
+  match_almost_full: 'alert-circle-outline',
+  event_invite: 'mail-open-outline',
+  match_renewed_invite: 'refresh-outline',
+  event_settings_changed: 'settings-outline',
+  event_started_early: 'play-circle-outline',
+  event_deleted: 'trash-outline',
+  player_removed: 'person-remove-outline',
+  event_full: 'people',
+  event_completed: 'trophy-outline',
+  opponent_score_locked: 'lock-closed-outline',
+  score_overridden: 'create-outline',
+  connection_accepted: 'person-add-outline',
+  player_left_event: 'exit-outline',
+  event_reminder_30min: 'alarm-outline',
+  chat_message: 'chatbubble-ellipses-outline',
+};
+
+const SWIPE_THRESHOLD = -80;
+const DELETE_WIDTH = 72;
+
+function SwipeableRow({
+  onDelete,
+  children,
+  openRowRef,
+}: {
+  onDelete: () => void;
+  children: React.ReactNode;
+  openRowRef: React.MutableRefObject<{ close: () => void } | null>;
+}) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const selfRef = useRef<{ close: () => void }>({
+    close: () => {
+      Animated.spring(translateX, {
+        toValue: 0,
+        useNativeDriver: true,
+        overshootClamping: true,
+      }).start();
+    },
+  });
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gs) =>
+        Math.abs(gs.dx) > 10 && Math.abs(gs.dy) < 20,
+      onPanResponderGrant: () => {
+        if (openRowRef.current && openRowRef.current !== selfRef.current) {
+          openRowRef.current.close();
+        }
+      },
+      onPanResponderMove: (_, gs) => {
+        if (gs.dx < 0) {
+          translateX.setValue(Math.max(gs.dx, -DELETE_WIDTH - 20));
+        }
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dx < SWIPE_THRESHOLD) {
+          Animated.spring(translateX, {
+            toValue: -DELETE_WIDTH,
+            useNativeDriver: true,
+            overshootClamping: true,
+          }).start();
+          openRowRef.current = selfRef.current;
+        } else {
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            overshootClamping: true,
+          }).start();
+          if (openRowRef.current === selfRef.current) {
+            openRowRef.current = null;
+          }
+        }
+      },
+    }),
+  ).current;
+
+  return (
+    <View style={styles.swipeContainer}>
+      <View style={styles.deleteAction}>
+        <Pressable style={styles.deleteBtn} onPress={onDelete}>
+          <Ionicons name="trash-outline" size={20} color={colors.white} />
+        </Pressable>
+      </View>
+      <Animated.View
+        style={{ transform: [{ translateX }] }}
+        {...panResponder.panHandlers}
+      >
+        {children}
+      </Animated.View>
+    </View>
+  );
+}
 
 export function NotificationsScreen({ navigation }: Props) {
   const { t, locale } = useTranslation();
@@ -38,14 +138,18 @@ export function NotificationsScreen({ navigation }: Props) {
   const currentUser = useAuthStore((s) => s.user);
   const { data, isLoading, refetch, isFetching } = useIncomingFollowRequests();
   const invitesQ = useIncomingEventInvites({ enabled: !!currentUser });
+  const notifsQ = useNotificationsList();
+  const dismissNotifMut = useDismissNotification();
   const dismissInviteMut = useDismissIncomingEventInvite();
   const accept = useAcceptFollowRequest();
   const decline = useDeclineFollowRequest();
   const unread = useUnreadNotifications();
   const isFocused = useIsFocused();
+  const openRowRef = useRef<{ close: () => void } | null>(null);
 
   const connectionRequests = data ?? [];
   const inviteItems = invitesQ.data ?? [];
+  const generalNotifs = notifsQ.data ?? [];
   const merged: RowItem[] = [
     ...connectionRequests.map((item) => ({
       kind: 'follow_request' as const,
@@ -55,6 +159,11 @@ export function NotificationsScreen({ navigation }: Props) {
     ...inviteItems.map((item) => ({
       kind: 'event_invite' as const,
       key: `ei:${item.id}`,
+      item,
+    })),
+    ...generalNotifs.map((item) => ({
+      kind: 'general' as const,
+      key: `gn:${item.id}`,
       item,
     })),
   ];
@@ -69,6 +178,32 @@ export function NotificationsScreen({ navigation }: Props) {
         : b.item.createdAt;
     return da < db ? 1 : -1;
   });
+
+  // Group by date
+  const formatDateKey = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 86400000);
+    const itemDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    if (itemDate.getTime() === today.getTime()) return locale === "fr" ? "Aujourd\u0027hui" : "Today";
+    if (itemDate.getTime() === yesterday.getTime()) return locale === "fr" ? "Hier" : "Yesterday";
+    return d.toLocaleDateString(locale === "fr" ? "fr-FR" : "en-US", { weekday: "long", day: "numeric", month: "long" });
+  };
+
+  const sections = React.useMemo(() => {
+    const groups = new Map<string, RowItem[]>();
+    for (const item of merged) {
+      const dateStr =
+        item.kind === "follow_request" ? item.item.createdAt
+        : item.kind === "event_invite" ? item.item.createdAt
+        : item.item.createdAt;
+      const key = formatDateKey(dateStr);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(item);
+    }
+    return Array.from(groups.entries()).map(([title, data]) => ({ title, data }));
+  }, [merged, locale]);
 
   React.useEffect(() => {
     if (!isFocused) return;
@@ -91,6 +226,38 @@ export function NotificationsScreen({ navigation }: Props) {
     }
   };
 
+  const getGeneralAction = useCallback(
+    (n: GeneralNotification) => {
+      switch (n.type) {
+        case 'connection_accepted':
+          return n.actorId
+            ? () => navigateToUserProfile(navigation, n.actorId!, currentUser?.id)
+            : null;
+        case 'opponent_score_locked':
+          return n.matchId
+            ? () => (navigation as any).navigate('TournamentCourts', { matchId: n.matchId })
+            : null;
+        case 'score_overridden':
+        case 'event_completed':
+          return n.matchId
+            ? () => (navigation as any).navigate('EventScore', { matchId: n.matchId })
+            : null;
+        case 'chat_message':
+          return n.matchId
+            ? () => (navigation as any).navigate('MatchChat', { matchId: n.matchId })
+            : null;
+        case 'event_deleted':
+        case 'player_removed':
+          return null;
+        default:
+          return n.matchId
+            ? () => (navigation as any).navigate('MatchDetail', { matchId: n.matchId })
+            : null;
+      }
+    },
+    [navigation, currentUser?.id],
+  );
+
   if (isLoading) {
     return (
       <View style={styles.centered}>
@@ -104,107 +271,163 @@ export function NotificationsScreen({ navigation }: Props) {
       const u = item.item.requester;
       const connectionBody =
         locale === 'fr'
-          ? `${u.username} t’a envoyé une invitation de connexion.`
+          ? `${u.username} t'a envoy\u00e9 une invitation de connexion.`
           : `${u.username} sent you a connection request.`;
       return (
-        <View style={styles.row}>
+        <SwipeableRow onDelete={() => handleDecline(u.id)} openRowRef={openRowRef}>
           <Pressable
-            style={styles.rowMain}
+            style={styles.row}
             onPress={() => navigateToUserProfile(navigation, u.id, currentUser?.id)}
           >
-            <View style={styles.avatar}>
-              {u.profilePicture ? (
-                <Image source={{ uri: u.profilePicture }} style={styles.avatarImg} />
-              ) : (
-                <Text style={styles.avatarLetter}>{u.username[0]?.toUpperCase() ?? '?'}</Text>
-              )}
+            <View style={styles.rowMain}>
+              <View style={styles.avatar}>
+                {u.profilePicture ? (
+                  <Image source={{ uri: u.profilePicture }} style={styles.avatarImg} />
+                ) : (
+                  <Text style={styles.avatarLetter}>{u.username[0]?.toUpperCase() ?? '?'}</Text>
+                )}
+              </View>
+              <View style={[styles.rowText, styles.inviteRowText]}>
+                <Text style={styles.sectionLabel}>{t('notifications.connectionRequest')}</Text>
+                <Text style={styles.inviteBodyText} numberOfLines={2}>
+                  {connectionBody}
+                </Text>
+              </View>
             </View>
-            <View style={[styles.rowText, styles.inviteRowText]}>
-              <Text style={styles.sectionLabel}>{t('notifications.connectionRequest')}</Text>
-              <Text style={styles.inviteBodyText} numberOfLines={2}>
-                {connectionBody}
-              </Text>
+            <View style={styles.actions}>
+              <Pressable
+                style={[styles.btn, styles.btnAccept]}
+                onPress={() => handleAccept(u.id)}
+                disabled={decline.isPending || accept.isPending}
+              >
+                <Ionicons name="checkmark" size={20} color={colors.white} />
+              </Pressable>
             </View>
           </Pressable>
-          <View style={styles.actions}>
-            <Pressable
-              style={[styles.btn, styles.btnDecline]}
-              onPress={() => handleDecline(u.id)}
-              disabled={decline.isPending || accept.isPending}
-            >
-              <Ionicons name="close" size={20} color={colors.error} />
-            </Pressable>
-            <Pressable
-              style={[styles.btn, styles.btnAccept]}
-              onPress={() => handleAccept(u.id)}
-              disabled={decline.isPending || accept.isPending}
-            >
-              <Ionicons name="checkmark" size={20} color={colors.white} />
-            </Pressable>
-          </View>
-        </View>
+        </SwipeableRow>
       );
     }
 
+    if (item.kind === "event_invite") {
+      const inv = item.item;
+      const inviteTitle =
+        locale === "fr" ? "Invitation \u00e0 un \u00e9v\u00e9nement" : "Event invitation";
+      const eventKind =
+        inv.eventFormat === "tournament"
+          ? locale === "fr" ? "tournoi" : "tournament"
+          : "match";
+      const inviteBody =
+        locale === "fr"
+          ? `${inv.inviterUsername} t\u0027a invit\u00e9 \u00e0 rejoindre un ${eventKind}.`
+          : `${inv.inviterUsername} invited you to join a ${eventKind}.`;
+      return (
+        <SwipeableRow onDelete={() => dismissInviteMut.mutate(inv.id)} openRowRef={openRowRef}>
+          <Pressable
+            style={styles.row}
+            onPress={() => navigation.navigate("MatchDetail" as any, { matchId: inv.matchId })}
+          >
+            <View style={styles.rowMain}>
+              <View style={[styles.avatar, styles.inviteAvatar]}>
+                <Ionicons name="mail-open-outline" size={18} color={colors.primary} />
+              </View>
+              <View style={[styles.rowText, styles.inviteRowText]}>
+                <Text style={styles.sectionLabel}>{inviteTitle}</Text>
+                <Text style={styles.inviteBodyText} numberOfLines={2}>
+                  {inviteBody}
+                </Text>
+              </View>
+            </View>
+          </Pressable>
+        </SwipeableRow>
+      );
+    }
+
+    // General notifications
     const n = item.item;
-    const inviteTitle =
-      locale === 'fr' ? 'Invitation à un événement' : 'Event invitation';
-    const eventKind =
-      n.eventFormat === 'tournament'
-        ? locale === 'fr'
-          ? 'tournoi'
-          : 'tournament'
-        : locale === 'fr'
-          ? 'match'
-          : 'match';
-    const inviteBody =
-      locale === 'fr'
-        ? `${n.inviterUsername} t’a invité à rejoindre un ${eventKind}.`
-        : `${n.inviterUsername} invited you to join a ${eventKind}.`;
+    const iconName = NOTIF_ICON[n.type] ?? "notifications-outline";
+    const bodyText = t(`notifications.type_${n.type}` as any, {
+      actor: n.actorUsername ?? "",
+      ...(n.extra ?? {}),
+    });
+
+    // Header label per category
+    const headerLabel = (() => {
+      switch (n.type) {
+        case "event_settings_changed":
+        case "event_started_early":
+        case "event_deleted":
+          return t("notifications.headerOrganizerAction");
+        case "player_removed":
+          return t("notifications.headerRemoved");
+        case "player_joined":
+        case "match_almost_full":
+        case "event_full":
+        case "player_left_event":
+          return t("notifications.headerPlayers");
+        case "event_completed":
+          return t("notifications.headerResult");
+        case "opponent_score_locked":
+        case "score_overridden":
+          return t("notifications.headerScore");
+        case "connection_accepted":
+          return t("notifications.headerSocial");
+        case "event_invite":
+        case "match_renewed_invite":
+          return t("notifications.headerInvite");
+        case "event_reminder_30min":
+          return t("notifications.headerReminder");
+        case "chat_message":
+          return t("notifications.headerChat");
+        default:
+          return t("notifications.headerGeneral");
+      }
+    })();
+
+    const onTap = getGeneralAction(n);
+
     return (
-      <View style={styles.row}>
-        <View style={[styles.avatar, styles.inviteAvatar]}>
-          <Ionicons name="mail-open-outline" size={18} color={colors.primary} />
-        </View>
-        <View style={[styles.rowText, styles.inviteRowText]}>
-          <Text style={styles.sectionLabel}>{inviteTitle}</Text>
-          <Text style={styles.inviteBodyText} numberOfLines={2}>
-            {inviteBody}
-          </Text>
-        </View>
-        <View style={styles.inviteActions}>
-          <Pressable
-            style={[styles.btn, styles.btnDecline]}
-            onPress={() => dismissInviteMut.mutate(n.id)}
-            disabled={dismissInviteMut.isPending}
-            accessibilityRole="button"
-            accessibilityLabel={t('common.cancel')}
-          >
-            <Ionicons name="close" size={18} color={colors.error} />
-          </Pressable>
-          <Pressable
-            style={[styles.btn, styles.btnAccept]}
-            onPress={() => navigation.navigate('MatchDetail', { matchId: n.matchId })}
-            accessibilityRole="button"
-            accessibilityLabel={locale === 'fr' ? 'Voir' : 'View'}
-          >
-            <Ionicons name="eye-outline" size={18} color={colors.white} />
-          </Pressable>
-        </View>
-      </View>
+      <SwipeableRow onDelete={() => dismissNotifMut.mutate(n.id)} openRowRef={openRowRef}>
+        <Pressable
+          style={styles.row}
+          onPress={onTap ?? undefined}
+          disabled={!onTap}
+        >
+          <View style={styles.rowMain}>
+            <View style={[styles.avatar, styles.generalAvatar]}>
+              <Ionicons name={iconName as any} size={18} color={colors.primary} />
+            </View>
+            <View style={[styles.rowText, styles.inviteRowText]}>
+              <Text style={styles.sectionLabel}>{headerLabel}</Text>
+              <Text style={styles.inviteBodyText} numberOfLines={3}>
+                {bodyText}
+              </Text>
+            </View>
+          </View>
+          {onTap ? (
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          ) : null}
+        </Pressable>
+      </SwipeableRow>
     );
   };
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={merged}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => item.key}
         renderItem={renderRow}
+        renderSectionHeader={({ section: { title } }) => (
+          <View style={styles.sectionDateHeader}>
+            <Text style={styles.sectionDateText}>{title}</Text>
+          </View>
+        )}
+        stickySectionHeadersEnabled={false}
         refreshing={isFetching}
         onRefresh={() => {
           void refetch();
           void invitesQ.refetch();
+          void notifsQ.refetch();
         }}
         contentContainerStyle={[styles.list, { paddingBottom: bottomInset, flexGrow: 1 }]}
         ListEmptyComponent={
@@ -232,6 +455,26 @@ const styles = StyleSheet.create({
   list: {
     padding: spacing.md,
   },
+  swipeContainer: {
+    marginBottom: spacing.sm,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+  },
+  deleteAction: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.error,
+    borderRadius: borderRadius.lg,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: spacing.lg,
+  },
+  deleteBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -239,7 +482,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: spacing.sm,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
@@ -253,6 +495,18 @@ const styles = StyleSheet.create({
   rowText: {
     flex: 1,
     minWidth: 0,
+  },
+  sectionDateHeader: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  sectionDateText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   sectionLabel: {
     fontSize: 11,
@@ -276,6 +530,9 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   inviteAvatar: {
+    backgroundColor: colors.primary + '18',
+  },
+  generalAvatar: {
     backgroundColor: colors.primary + '18',
   },
   inviteRowText: {

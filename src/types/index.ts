@@ -1,3 +1,31 @@
+export type NotificationType =
+  | 'player_joined'
+  | 'match_almost_full'
+  | 'event_invite'
+  | 'match_renewed_invite'
+  | 'event_settings_changed'
+  | 'event_started_early'
+  | 'event_deleted'
+  | 'player_removed'
+  | 'event_full'
+  | 'event_completed'
+  | 'opponent_score_locked'
+  | 'score_overridden'
+  | 'connection_accepted'
+  | 'player_left_event'
+  | 'event_reminder_30min'
+  | 'chat_message';
+
+export interface GeneralNotification {
+  id: string;
+  type: NotificationType;
+  matchId?: string;
+  actorUsername?: string;
+  actorId?: string;
+  extra?: Record<string, string>;
+  createdAt: string;
+}
+
 export type SkillLevel = 'beginner' | 'intermediate' | 'advanced';
 export type Position =
   | 'setter'

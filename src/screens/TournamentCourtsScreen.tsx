@@ -4,6 +4,7 @@ import {
   Alert,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -70,7 +71,7 @@ export function TournamentCourtsScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const { subscribeToMatch } = useSocket();
-  const { data: match, isLoading, error, refetch } = useMatch(matchId);
+  const { data: match, isLoading, error, refetch, isFetching } = useMatch(matchId);
   const [showInfo, setShowInfo] = useState(false);
 
   const submitMut = useSubmitFixtureScore();
@@ -179,7 +180,7 @@ export function TournamentCourtsScreen({ route, navigation }: Props) {
 
   return (
     <>
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} />}>
       {/* Info bar */}
       <View style={styles.infoBar}>
         <View style={styles.infoItem}>

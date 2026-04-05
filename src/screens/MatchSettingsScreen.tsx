@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { MatchesStackParamList } from '../navigation/types';
 import {
   useDeleteMatch,
+  useManageMatch,
   useMatch,
   useRenewMatch,
 } from '../hooks/useMatches';
@@ -32,6 +33,7 @@ export function MatchSettingsScreen({ route, navigation }: Props) {
   const { data: match, isLoading, error } = useMatch(matchId);
   const renewMut = useRenewMatch();
   const deleteMut = useDeleteMatch();
+  const manageMut = useManageMatch();
 
   if (isLoading) {
     return (
@@ -49,14 +51,7 @@ export function MatchSettingsScreen({ route, navigation }: Props) {
     );
   }
 
-  if (user?.id !== match.creatorId) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{t('match.manageUnauthorized')}</Text>
-      </View>
-    );
-  }
-
+  const isCreator = user?.id === match.creatorId;
   const cancelled = match.status === 'cancelled';
   const canRenew = !cancelled;
 
@@ -109,66 +104,185 @@ export function MatchSettingsScreen({ route, navigation }: Props) {
 
   const tournament = isTournamentMatch(match);
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: tournament
+        ? t('nav.tournamentSettings')
+        : t('nav.matchSettings'),
+    });
+  }, [navigation, tournament, t]);
+
+  const isUpcoming =
+    !cancelled &&
+    match.status !== 'completed' &&
+    new Date(match.scheduledAt).getTime() > Date.now();
+  const canEditTournament = tournament && isUpcoming;
+  const canEditMatch = !tournament && isUpcoming;
+
+  const handleStartNow = () => {
+    Alert.alert(
+      t('match.startNowConfirmTitle'),
+      t('match.startNowConfirmMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('match.startNowConfirmAction'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await manageMut.mutateAsync({ matchId, startNow: true } as any);
+              navigation.goBack();
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : t('match.manageFailed');
+              Alert.alert(t('common.error'), msg);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.intro}>{t('match.matchSettingsIntro')}</Text>
-
+      {/* Section info — visible par tous */}
       <TouchableOpacity
-        style={[styles.card, !canRenew && styles.cardDisabled]}
-        onPress={handleRenew}
-        disabled={!canRenew || renewMut.isPending}
+        style={styles.card}
+        onPress={() => (navigation as any).navigate('EventGuide', { matchId })}
         activeOpacity={0.75}
       >
         <View style={styles.cardIconWrap}>
-          <Ionicons
-            name="refresh-outline"
-            size={24}
-            color={canRenew ? colors.primary : colors.textMuted}
-          />
+          <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
         </View>
         <View style={styles.cardTextWrap}>
-          <Text style={styles.cardTitle}>{t('match.renewMatchSectionTitle')}</Text>
-          <Text style={styles.cardSubtitle}>
-            {tournament
-              ? t('match.renewMatchSectionSubtitleTournament')
-              : t('match.renewMatchSectionSubtitle')}
-          </Text>
-          {!canRenew ? (
-            <Text style={styles.cardHint}>{t('match.renewMatchDisabledHint')}</Text>
-          ) : null}
+          <Text style={styles.cardTitle}>{t('match.eventGuideTitle')}</Text>
+          <Text style={styles.cardSubtitle}>{t('match.eventGuideSubtitle')}</Text>
         </View>
-        {renewMut.isPending ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : (
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-        )}
+        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.card, styles.cardDanger]}
-        onPress={handleDelete}
-        disabled={deleteMut.isPending}
-        activeOpacity={0.75}
-      >
-        <View style={[styles.cardIconWrap, styles.cardIconDanger]}>
-          <Ionicons name="trash-outline" size={24} color={colors.error} />
-        </View>
-        <View style={styles.cardTextWrap}>
-          <Text style={[styles.cardTitle, styles.cardTitleDanger]}>
-            {t('match.deleteMatchSectionTitle')}
+      {/* Sections organisateur uniquement */}
+      {isCreator ? (
+        <>
+          <Text style={styles.intro}>
+            {tournament ? t('match.tournamentSettingsIntro') : t('match.matchSettingsIntro')}
           </Text>
-          <Text style={styles.cardSubtitle}>{t('match.deleteMatchSectionSubtitle')}</Text>
-        </View>
-        {deleteMut.isPending ? (
-          <ActivityIndicator color={colors.error} />
-        ) : (
-          <Ionicons name="chevron-forward" size={20} color={colors.error} />
-        )}
-      </TouchableOpacity>
+
+          {canEditTournament ? (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => (navigation as any).navigate('EditTournamentSettings', { matchId })}
+              activeOpacity={0.75}
+            >
+              <View style={styles.cardIconWrap}>
+                <Ionicons name="options-outline" size={24} color={colors.primary} />
+              </View>
+              <View style={styles.cardTextWrap}>
+                <Text style={styles.cardTitle}>{t('match.editTournamentSettingsTitle')}</Text>
+                <Text style={styles.cardSubtitle}>{t('match.editTournamentSettingsSubtitle')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          ) : null}
+
+          {canEditMatch ? (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => (navigation as any).navigate('EditMatchSettings', { matchId })}
+              activeOpacity={0.75}
+            >
+              <View style={styles.cardIconWrap}>
+                <Ionicons name="options-outline" size={24} color={colors.primary} />
+              </View>
+              <View style={styles.cardTextWrap}>
+                <Text style={styles.cardTitle}>{t('match.editMatchSettingsTitle')}</Text>
+                <Text style={styles.cardSubtitle}>{t('match.editMatchSettingsSubtitle')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          ) : null}
+
+          {isUpcoming ? (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={handleStartNow}
+              disabled={manageMut.isPending}
+              activeOpacity={0.75}
+            >
+              <View style={styles.cardIconWrap}>
+                <Ionicons name="play-circle-outline" size={24} color={colors.success} />
+              </View>
+              <View style={styles.cardTextWrap}>
+                <Text style={styles.cardTitle}>{t('match.startNowTitle')}</Text>
+                <Text style={styles.cardSubtitle}>{t('match.startNowSubtitle')}</Text>
+              </View>
+              {manageMut.isPending ? (
+                <ActivityIndicator color={colors.success} />
+              ) : (
+                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              )}
+            </TouchableOpacity>
+          ) : null}
+
+          <TouchableOpacity
+            style={[styles.card, !canRenew && styles.cardDisabled]}
+            onPress={handleRenew}
+            disabled={!canRenew || renewMut.isPending}
+            activeOpacity={0.75}
+          >
+            <View style={styles.cardIconWrap}>
+              <Ionicons
+                name="refresh-outline"
+                size={24}
+                color={canRenew ? colors.primary : colors.textMuted}
+              />
+            </View>
+            <View style={styles.cardTextWrap}>
+              <Text style={styles.cardTitle}>
+                {tournament ? t('match.renewTournamentSectionTitle') : t('match.renewMatchSectionTitle')}
+              </Text>
+              <Text style={styles.cardSubtitle}>
+                {tournament
+                  ? t('match.renewMatchSectionSubtitleTournament')
+                  : t('match.renewMatchSectionSubtitle')}
+              </Text>
+              {!canRenew ? (
+                <Text style={styles.cardHint}>{t('match.renewMatchDisabledHint')}</Text>
+              ) : null}
+            </View>
+            {renewMut.isPending ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : (
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.card, styles.cardDanger]}
+            onPress={handleDelete}
+            disabled={deleteMut.isPending}
+            activeOpacity={0.75}
+          >
+            <View style={[styles.cardIconWrap, styles.cardIconDanger]}>
+              <Ionicons name="trash-outline" size={24} color={colors.error} />
+            </View>
+            <View style={styles.cardTextWrap}>
+              <Text style={[styles.cardTitle, styles.cardTitleDanger]}>
+                {t('match.deleteMatchSectionTitle')}
+              </Text>
+              <Text style={styles.cardSubtitle}>{t('match.deleteMatchSectionSubtitle')}</Text>
+            </View>
+            {deleteMut.isPending ? (
+              <ActivityIndicator color={colors.error} />
+            ) : (
+              <Ionicons name="chevron-forward" size={20} color={colors.error} />
+            )}
+          </TouchableOpacity>
+        </>
+      ) : null}
     </ScrollView>
   );
 }

@@ -7,7 +7,11 @@ import { MapScreen } from '../screens/MapScreen';
 import { MatchListScreen } from '../screens/MatchListScreen';
 import { MatchDetailScreen } from '../screens/MatchDetailScreen';
 import { MatchSettingsScreen } from '../screens/MatchSettingsScreen';
+import { EditTournamentSettingsScreen } from '../screens/EditTournamentSettingsScreen';
+import { EditMatchSettingsScreen } from '../screens/EditMatchSettingsScreen';
+import { EventGuideScreen } from '../screens/EventGuideScreen';
 import { MatchTeamsBoardScreen } from '../screens/MatchTeamsBoardScreen';
+import { TeamsGuideScreen } from '../screens/TeamsGuideScreen';
 import { EventScoreScreen } from '../screens/EventScoreScreen';
 import { TournamentCourtsScreen } from '../screens/TournamentCourtsScreen';
 import { TournamentStandingsScreen } from '../screens/TournamentStandingsScreen';
@@ -77,9 +81,29 @@ function FindNavigator() {
         options={{ title: t('nav.matchSettings') }}
       />
       <FindStack.Screen
+        name="EditTournamentSettings"
+        component={EditTournamentSettingsScreen}
+        options={{ title: t('match.editTournamentSettingsTitle') }}
+      />
+      <FindStack.Screen
+        name="EditMatchSettings"
+        component={EditMatchSettingsScreen}
+        options={{ title: t('match.editMatchSettingsTitle') }}
+      />
+      <FindStack.Screen
+        name="EventGuide"
+        component={EventGuideScreen}
+        options={{ title: t('match.eventGuideTitle') }}
+      />
+      <FindStack.Screen
         name="MatchTeamsBoard"
         component={MatchTeamsBoardScreen}
         options={{ title: t('match.viewTeamsBoard') }}
+      />
+      <FindStack.Screen
+        name="TeamsGuide"
+        component={TeamsGuideScreen}
+        options={{ title: t('match.teamsInfoTitle') }}
       />
       <FindStack.Screen
         name="EventScore"
@@ -160,12 +184,32 @@ function MapNavigator() {
         options={{ headerShown: true, title: t('nav.matchSettings') }}
       />
       <MapStack.Screen
+        name="EditTournamentSettings"
+        component={EditTournamentSettingsScreen}
+        options={{ headerShown: true, title: t('match.editTournamentSettingsTitle') }}
+      />
+      <MapStack.Screen
+        name="EditMatchSettings"
+        component={EditMatchSettingsScreen}
+        options={{ headerShown: true, title: t('match.editMatchSettingsTitle') }}
+      />
+      <MapStack.Screen
+        name="EventGuide"
+        component={EventGuideScreen}
+        options={{ headerShown: true, title: t('match.eventGuideTitle') }}
+      />
+      <MapStack.Screen
         name="MatchTeamsBoard"
         component={MatchTeamsBoardScreen}
         options={{
           headerShown: true,
           title: t('match.viewTeamsBoard'),
         }}
+      />
+      <MapStack.Screen
+        name="TeamsGuide"
+        component={TeamsGuideScreen}
+        options={{ headerShown: true, title: t('match.teamsInfoTitle') }}
       />
       <MapStack.Screen
         name="EventScore"
@@ -258,9 +302,29 @@ function MyNavigator() {
         options={{ title: t('nav.matchSettings') }}
       />
       <MyStack.Screen
+        name="EditTournamentSettings"
+        component={EditTournamentSettingsScreen}
+        options={{ title: t('match.editTournamentSettingsTitle') }}
+      />
+      <MyStack.Screen
+        name="EditMatchSettings"
+        component={EditMatchSettingsScreen}
+        options={{ title: t('match.editMatchSettingsTitle') }}
+      />
+      <MyStack.Screen
+        name="EventGuide"
+        component={EventGuideScreen}
+        options={{ title: t('match.eventGuideTitle') }}
+      />
+      <MyStack.Screen
         name="MatchTeamsBoard"
         component={MatchTeamsBoardScreen}
         options={{ title: t('match.viewTeamsBoard') }}
+      />
+      <MyStack.Screen
+        name="TeamsGuide"
+        component={TeamsGuideScreen}
+        options={{ title: t('match.teamsInfoTitle') }}
       />
       <MyStack.Screen
         name="EventScore"
@@ -350,9 +414,29 @@ function ProfileNavigator() {
         options={{ title: t('nav.matchSettings') }}
       />
       <ProfileStack.Screen
+        name="EditTournamentSettings"
+        component={EditTournamentSettingsScreen}
+        options={{ title: t('match.editTournamentSettingsTitle') }}
+      />
+      <ProfileStack.Screen
+        name="EditMatchSettings"
+        component={EditMatchSettingsScreen}
+        options={{ title: t('match.editMatchSettingsTitle') }}
+      />
+      <ProfileStack.Screen
+        name="EventGuide"
+        component={EventGuideScreen}
+        options={{ title: t('match.eventGuideTitle') }}
+      />
+      <ProfileStack.Screen
         name="MatchTeamsBoard"
         component={MatchTeamsBoardScreen}
         options={{ title: t('match.viewTeamsBoard') }}
+      />
+      <ProfileStack.Screen
+        name="TeamsGuide"
+        component={TeamsGuideScreen}
+        options={{ title: t('match.teamsInfoTitle') }}
       />
       <ProfileStack.Screen
         name="EventScore"
@@ -410,6 +494,31 @@ function NotificationsNavigator() {
         name="Notifications"
         component={NotificationsScreen}
         options={{ title: t('nav.notifications') }}
+      />
+      <NotifStack.Screen
+        name="MatchDetail"
+        component={MatchDetailScreen}
+        options={{ title: t('nav.matchDetails') }}
+      />
+      <NotifStack.Screen
+        name="EventScore"
+        component={EventScoreScreen}
+        options={{ title: t('match.viewScoreDetail') }}
+      />
+      <NotifStack.Screen
+        name="TournamentCourts"
+        component={TournamentCourtsScreen}
+        options={{ title: t('match.tournamentCourtsPageTitle') }}
+      />
+      <NotifStack.Screen
+        name="UserProfile"
+        component={UserProfileScreen}
+        options={{ title: t('nav.profile') }}
+      />
+      <NotifStack.Screen
+        name="Connections"
+        component={ConnectionsScreen}
+        options={{ title: t('nav.followers') }}
       />
     </NotifStack.Navigator>
   );

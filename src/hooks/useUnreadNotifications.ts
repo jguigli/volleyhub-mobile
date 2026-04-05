@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIncomingEventInvites } from './useMatches';
 import { useIncomingFollowRequests } from './useUsers';
+import { useNotificationsList } from './useNotificationsList';
 import { useAuthStore } from '../store/auth.store';
 
 const SEEN_NOTIFICATIONS_KEY = 'notifications_seen_ids_v1';
@@ -27,6 +28,7 @@ export function useUnreadNotifications() {
   const user = useAuthStore((s) => s.user);
   const followQ = useIncomingFollowRequests();
   const invitesQ = useIncomingEventInvites({ enabled: !!user });
+  const notifsQ = useNotificationsList();
   const [seenKeys, setSeenKeys] = useState<Set<string>>(new Set());
   const [seenLoaded, setSeenLoaded] = useState(false);
   const allKeysRef = useRef<string[]>([]);
@@ -71,8 +73,9 @@ export function useUnreadNotifications() {
   const allKeys = useMemo(() => {
     const follow = (followQ.data ?? []).map((r) => toFollowKey(r.id));
     const invites = (invitesQ.data ?? []).map((r) => toInviteKey(r.id));
-    return [...follow, ...invites];
-  }, [followQ.data, invitesQ.data]);
+    const notifs = (notifsQ.data ?? []).map((r) => `notif:${r.id}`);
+    return [...follow, ...invites, ...notifs];
+  }, [followQ.data, invitesQ.data, notifsQ.data]);
   useEffect(() => {
     allKeysRef.current = allKeys;
   }, [allKeys]);
@@ -113,7 +116,7 @@ export function useUnreadNotifications() {
     hasUnread: unreadCount > 0,
     markAllAsSeen,
     refetchAll: async () => {
-      await Promise.all([followQ.refetch(), invitesQ.refetch()]);
+      await Promise.all([followQ.refetch(), invitesQ.refetch(), notifsQ.refetch()]);
     },
   };
 }

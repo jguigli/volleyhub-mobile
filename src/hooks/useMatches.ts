@@ -13,10 +13,14 @@ export function useNearbyMatches(params: {
   zoomDelta?: number;
 }) {
   const { zoomDelta, ...apiParams } = params;
+  // Round coords to ~100m and radius to 500m to reduce refetches
+  const stableLat = Math.round((apiParams.lat ?? 0) * 100) / 100;
+  const stableLng = Math.round((apiParams.lng ?? 0) * 100) / 100;
+  const stableRadius = Math.round((apiParams.radius ?? 15000) / 500) * 500;
   return useQuery({
-    queryKey: [MATCHES_KEY, 'nearby', apiParams.radius, apiParams.skillLevel, zoomDelta],
+    queryKey: [MATCHES_KEY, 'nearby', stableLat, stableLng, stableRadius, apiParams.skillLevel],
     queryFn: () => matchesApi.findNearby(apiParams),
-    staleTime: 30_000,
+    staleTime: 60_000,
     placeholderData: (prev) => prev,
     enabled: true,
   });
@@ -145,6 +149,11 @@ export function useManageMatch() {
       teamAssignments?: Record<string, number | null>;
       setScores?: { teamA: number; teamB: number }[] | null;
       tournamentGames?: TournamentGame[] | null;
+      tournamentPointsPerMatch?: number;
+      tournamentCourtCount?: number;
+      tournamentSystem?: string;
+      teamCount?: number;
+      removedTeamIndices?: number[];
     }) => {
       const { matchId, ...body } = args;
       return matchesApi.manage(matchId, body);

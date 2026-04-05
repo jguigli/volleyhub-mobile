@@ -3,7 +3,7 @@
  * Points bleus = terrains du référentiel uniquement. Les matchs sur lieu « pin » n’ont pas de point bleu.
  */
 
-import React, { useRef, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
@@ -48,6 +48,27 @@ const DEFAULT_LNG = 2.3522;
 const DEFAULT_RADIUS = 15000;
 const DEFAULT_DELTA = 0.15;
 
+/** Marker that tracks view changes briefly after mount then stops to avoid flicker/jump.
+ *  If forceTrack is true, re-enables tracking temporarily (e.g. selection change). */
+const StableMarker = React.memo(function StableMarker(
+  props: React.ComponentProps<typeof Marker> & { forceTrack?: boolean },
+) {
+  const { forceTrack, ...rest } = props;
+  const [track, setTrack] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setTrack(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    if (forceTrack) {
+      setTrack(true);
+      const timer = setTimeout(() => setTrack(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [forceTrack]);
+  return <Marker {...rest} tracksViewChanges={track} />;
+});
+
 export function MapScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -56,6 +77,7 @@ export function MapScreen({ navigation, route }: Props) {
   const mapRef = useRef<MapView>(null);
 
   const [selectedMatch, setSelectedMatch] = useState<NearbyMatch | null>(null);
+  const [eventFilter, setEventFilter] = useState<'all' | 'upcoming' | 'ongoing'>('all');
 
   const userLat = lat ?? DEFAULT_LAT;
   const userLng = lng ?? DEFAULT_LNG;
@@ -90,12 +112,19 @@ export function MapScreen({ navigation, route }: Props) {
   });
 
   const matchMarkers = useMemo(() => {
-    return (matches ?? []).map((m) => ({
+    const all = (matches ?? []).map((m) => ({
       ...m,
       marker_lat: Number(m.court_lat),
       marker_lng: Number(m.court_lng),
     }));
-  }, [matches]);
+    if (eventFilter === 'upcoming') {
+      return all.filter((m) => new Date(m.scheduled_at).getTime() > Date.now());
+    }
+    if (eventFilter === 'ongoing') {
+      return all.filter((m) => new Date(m.scheduled_at).getTime() <= Date.now());
+    }
+    return all;
+  }, [matches, eventFilter]);
 
   const clusterCellSize = useMemo(
     () => Math.max(0.01, mapZoomDelta / 7),
@@ -201,7 +230,11 @@ export function MapScreen({ navigation, route }: Props) {
             latitude: region.latitude,
             longitude: region.longitude,
           });
-          setMapZoomDelta(region.latitudeDelta);
+          // Round to 2 decimal places to avoid refetching on tiny zoom changes
+          const rounded = Math.round(region.latitudeDelta * 100) / 100;
+          if (rounded !== Math.round(mapZoomDelta * 100) / 100) {
+            setMapZoomDelta(region.latitudeDelta);
+          }
         }}
         {...mapThemeProps}
       >
@@ -210,12 +243,13 @@ export function MapScreen({ navigation, route }: Props) {
           const isFull = match.status === 'full';
           const isSelected = selectedMatch?.id === match.id;
           return (
-            <Marker
+            <StableMarker
               key={`match-${match.id}`}
               coordinate={{
                 latitude: match.marker_lat,
                 longitude: match.marker_lng,
               }}
+              forceTrack={isSelected}
               onPress={(e) => {
                 e.stopPropagation();
                 setSelectedMatch(match);
@@ -224,8 +258,8 @@ export function MapScreen({ navigation, route }: Props) {
               <View
                 style={[
                   styles.matchMarker,
-                  isSelected && styles.matchMarkerSelected,
                   { backgroundColor: matchMarkerBackground(match, isFull) },
+                  isSelected && styles.matchMarkerSelected,
                 ]}
               >
                 <MaterialCommunityIcons name="volleyball" size={12} color={colors.white} />
@@ -233,19 +267,20 @@ export function MapScreen({ navigation, route }: Props) {
                   {match.current_players}/{match.max_players}
                 </Text>
               </View>
-            </Marker>
+            </StableMarker>
           );
         })}
 
         {shouldCluster &&
           clustered.map((group, idx) =>
             group.count <= 1 ? (
-              <Marker
+              <StableMarker
                 key={`single-${group.matches[0].id}`}
                 coordinate={{
                   latitude: group.matches[0].marker_lat,
                   longitude: group.matches[0].marker_lng,
                 }}
+                tracksViewChanges={false}
                 onPress={(e) => {
                   e.stopPropagation();
                   setSelectedMatch(group.matches[0]);
@@ -262,11 +297,12 @@ export function MapScreen({ navigation, route }: Props) {
                     {group.matches[0].current_players}/{group.matches[0].max_players}
                   </Text>
                 </View>
-              </Marker>
+              </StableMarker>
             ) : (
-              <Marker
+              <StableMarker
                 key={`cluster-${idx}`}
                 coordinate={{ latitude: group.lat, longitude: group.lng }}
+                tracksViewChanges={false}
                 onPress={(e) => {
                   e.stopPropagation();
                   mapRef.current?.animateToRegion(
@@ -283,7 +319,7 @@ export function MapScreen({ navigation, route }: Props) {
                 <View style={styles.clusterMarker}>
                   <Text style={styles.clusterText}>{group.count}</Text>
                 </View>
-              </Marker>
+              </StableMarker>
             ),
           )}
       </MapView>
@@ -328,6 +364,20 @@ export function MapScreen({ navigation, route }: Props) {
             {t('map.legendTournament')}
           </Text>
         </View>
+      </View>
+
+      <View style={[styles.filterRow, isMapDark ? styles.legendDark : styles.legendLight, { top: insets.top + 12 }]}>
+        {(['all', 'upcoming', 'ongoing'] as const).map((f) => (
+          <Pressable
+            key={f}
+            style={[styles.filterPill, eventFilter === f && styles.filterPillActive]}
+            onPress={() => setEventFilter(f)}
+          >
+            <Text style={[styles.filterPillText, eventFilter === f && styles.filterPillTextActive]}>
+              {t(`map.filter${f.charAt(0).toUpperCase() + f.slice(1)}` as 'map.filterAll')}
+            </Text>
+          </Pressable>
+        ))}
       </View>
 
       <View style={styles.fabColumn} pointerEvents="box-none">
@@ -406,12 +456,13 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   matchMarkerSelected: {
-    transform: [{ scale: 1.14 }],
+    transform: [{ scale: 1.4 }],
     borderWidth: 3,
-    borderColor: colors.warning,
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 10,
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    elevation: 12,
   },
   matchMarkerText: {
     color: colors.white,
@@ -492,6 +543,35 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  filterRow: {
+    position: 'absolute',
+    right: 16,
+    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 4,
+    gap: 4,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  filterPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  filterPillActive: {
+    backgroundColor: colors.primary,
+  },
+  filterPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  filterPillTextActive: {
+    color: colors.white,
   },
   fabColumn: {
     position: 'absolute',

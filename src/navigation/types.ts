@@ -17,7 +17,11 @@ export type FindStackParamList = {
   MatchList: undefined;
   MatchDetail: { matchId: string };
   MatchSettings: { matchId: string };
+  EditTournamentSettings: { matchId: string };
+  EditMatchSettings: { matchId: string };
+  EventGuide: { matchId: string };
   MatchTeamsBoard: { matchId: string };
+  TeamsGuide: { tournament: boolean };
   EventScore: { matchId: string };
   TournamentCourts: { matchId: string };
   TournamentStandings: { matchId: string };
@@ -34,7 +38,11 @@ export type MapStackParamList = {
   CreateMatch: CreateMatchParams;
   MatchDetail: { matchId: string };
   MatchSettings: { matchId: string };
+  EditTournamentSettings: { matchId: string };
+  EditMatchSettings: { matchId: string };
+  EventGuide: { matchId: string };
   MatchTeamsBoard: { matchId: string };
+  TeamsGuide: { tournament: boolean };
   EventScore: { matchId: string };
   TournamentCourts: { matchId: string };
   TournamentStandings: { matchId: string };
@@ -50,7 +58,11 @@ export type MyStackParamList = {
   MyMatchesCalendar: undefined;
   MatchDetail: { matchId: string };
   MatchSettings: { matchId: string };
+  EditTournamentSettings: { matchId: string };
+  EditMatchSettings: { matchId: string };
+  EventGuide: { matchId: string };
   MatchTeamsBoard: { matchId: string };
+  TeamsGuide: { tournament: boolean };
   EventScore: { matchId: string };
   TournamentCourts: { matchId: string };
   TournamentStandings: { matchId: string };
@@ -69,7 +81,11 @@ export type ProfileStackParamList = {
   EditProfile: undefined;
   MatchDetail: { matchId: string };
   MatchSettings: { matchId: string };
+  EditTournamentSettings: { matchId: string };
+  EditMatchSettings: { matchId: string };
+  EventGuide: { matchId: string };
   MatchTeamsBoard: { matchId: string };
+  TeamsGuide: { tournament: boolean };
   EventScore: { matchId: string };
   TournamentCourts: { matchId: string };
   TournamentStandings: { matchId: string };
@@ -84,6 +100,11 @@ export type ProfileStackParamList = {
 
 export type NotificationsStackParamList = {
   Notifications: undefined;
+  MatchDetail: { matchId: string };
+  EventScore: { matchId: string };
+  TournamentCourts: { matchId: string };
+  UserProfile: { userId: string };
+  Connections: { userId: string };
 };
 
 export type MainTabParamList = {

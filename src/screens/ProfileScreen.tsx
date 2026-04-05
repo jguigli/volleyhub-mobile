@@ -2,6 +2,7 @@ import React, { useCallback, useLayoutEffect, useState } from 'react';
 import {
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -51,8 +52,8 @@ export function ProfileScreen({ navigation }: Props) {
   const localeTag = localeToBcp47(locale);
   const [statsFormat, setStatsFormat] = useState<'match' | 'tournament'>('match');
   const { user } = useAuthStore();
-  const { data: profile, refetch: refetchProfile } = usePublicProfile(user?.id ?? '');
-  const { data: matchStats, isLoading: statsLoading } = useUserMatchStats(
+  const { data: profile, refetch: refetchProfile, isFetching: profileFetching } = usePublicProfile(user?.id ?? '');
+  const { data: matchStats, isLoading: statsLoading, refetch: refetchStats, isFetching: statsFetching } = useUserMatchStats(
     user?.id ?? '',
     statsFormat,
   );
@@ -112,7 +113,7 @@ export function ProfileScreen({ navigation }: Props) {
 
   const relationsTotal =
     profile != null
-      ? (profile.followersCount ?? 0) + (profile.followingCount ?? 0)
+      ? (profile.followersCount ?? 0)
       : null;
   const relationsText =
     relationsTotal === null
@@ -135,6 +136,7 @@ export function ProfileScreen({ navigation }: Props) {
       style={styles.container}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={profileFetching || statsFetching} onRefresh={() => { refetchProfile(); refetchStats(); }} />}
     >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -212,16 +214,15 @@ export function ProfileScreen({ navigation }: Props) {
             <Text style={styles.sectionTitle}>{t('profile.club')}</Text>
           </View>
           <View style={styles.clubBlockCard}>
-            <View>
-              <Text style={styles.clubSubsectionLabel}>{t('profile.clubSubsectionName')}</Text>
-              <Text style={styles.clubSubsectionValue} numberOfLines={4}>
+            <View style={styles.clubLine}>
+              <Text style={styles.clubLineLabel}>{t('profile.clubSubsectionName')} :</Text>
+              <Text style={styles.clubLineValue} numberOfLines={2}>
                 {clubRaw || t('profile.clubNotSpecified')}
               </Text>
             </View>
-            <View style={styles.clubBlockSubsectionDivider} />
-            <View>
-              <Text style={styles.clubSubsectionLabel}>{t('profile.competition')}</Text>
-              <Text style={styles.clubSubsectionValue} numberOfLines={4}>
+            <View style={styles.clubLine}>
+              <Text style={styles.clubLineLabel}>{t('profile.competition')} :</Text>
+              <Text style={styles.clubLineValue} numberOfLines={2}>
                 {showCompetition ? competitionLabelText : t('profile.competitionsNone')}
               </Text>
             </View>
@@ -252,45 +253,46 @@ export function ProfileScreen({ navigation }: Props) {
           </Pressable>
         </View>
 
-        <View style={styles.statsCard}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{showStatsLoading ? '–' : played}</Text>
-            <Text style={styles.statLabel}>{t('profile.played')}</Text>
+        <View style={styles.statsGrid}>
+          {/* Ligne 1 : Joués, Créés, À venir */}
+          <View style={styles.statsGridRow}>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{showStatsLoading ? '–' : played}</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.played')}</Text>
+            </View>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{showStatsLoading ? '–' : created}</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.created')}</Text>
+            </View>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{showStatsLoading ? '–' : upcoming}</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.upcoming')}</Text>
+            </View>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{showStatsLoading ? '–' : created}</Text>
-            <Text style={styles.statLabel}>{t('profile.created')}</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{showStatsLoading ? '–' : upcoming}</Text>
-            <Text style={styles.statLabel}>{t('profile.upcoming')}</Text>
-          </View>
-        </View>
 
-        <View style={styles.statisticsGrid}>
-          <View style={styles.statisticsRow}>
-            <View style={styles.statisticsItem}>
-              <Text style={styles.statisticsValue}>{wins}</Text>
-              <Text style={styles.statisticsLabel}>{t('profile.wins')}</Text>
+          <View style={styles.statsGridDivider} />
+
+          {/* Ligne 2 : Victoires, Défaites */}
+          <View style={styles.statsGridRow}>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{showStatsLoading ? '–' : wins}</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.wins')}</Text>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statisticsItem}>
-              <Text style={styles.statisticsValue}>{losses}</Text>
-              <Text style={styles.statisticsLabel}>{t('profile.losses')}</Text>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{showStatsLoading ? '–' : losses}</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.losses')}</Text>
             </View>
           </View>
-          <View style={styles.statisticsInnerDivider} />
-          <View style={styles.statisticsRow}>
-            <View style={styles.statisticsItem}>
-              <Text style={styles.statisticsValue}>{winRate}%</Text>
-              <Text style={styles.statisticsLabel}>{t('profile.winRate')}</Text>
+
+          {/* Ligne 3 : Ratio, Série */}
+          <View style={styles.statsGridRow}>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{showStatsLoading ? '–' : `${winRate}%`}</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.winRate')}</Text>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statisticsItem}>
-              <Text style={styles.statisticsValue}>{streak}</Text>
-              <Text style={styles.statisticsLabel}>{t('profile.currentStreak')}</Text>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{showStatsLoading ? '–' : streak}</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.currentStreak')}</Text>
             </View>
           </View>
         </View>
@@ -423,22 +425,22 @@ const styles = StyleSheet.create({
     ...shadows.card,
     alignSelf: 'stretch',
   },
-  clubSubsectionLabel: {
-    fontSize: 12,
+  clubLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  clubLineLabel: {
+    fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
   },
-  clubSubsectionValue: {
-    ...typography.body,
-    fontSize: 15,
-    fontWeight: '600',
+  clubLineValue: {
+    fontSize: 14,
+    fontWeight: '700',
     color: colors.text,
-  },
-  clubBlockSubsectionDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.md,
+    flexShrink: 1,
   },
   skillPositionCol: {
     flex: 1,
@@ -590,35 +592,39 @@ const styles = StyleSheet.create({
     color: colors.text,
     flexShrink: 1,
   },
-  statsCard: {
-    flexDirection: 'row',
-    padding: spacing.lg,
+  statsGrid: {
+    padding: spacing.md,
+    gap: spacing.sm,
   },
-  statItem: {
+  statsGridRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  statsGridCell: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    gap: 2,
   },
-  statValue: {
-    fontSize: 28,
+  statsGridValue: {
+    fontSize: 22,
     fontWeight: '700',
     color: colors.text,
   },
-  statLabel: {
-    fontSize: 11,
+  statsGridLabel: {
+    fontSize: 10,
+    fontWeight: '600',
     color: colors.textSecondary,
-    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
     textAlign: 'center',
   },
-  statDivider: {
-    width: 1,
+  statsGridDivider: {
+    height: 1,
     backgroundColor: colors.border,
-    marginVertical: 4,
-  },
-  statisticsGrid: {
-    padding: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    marginVertical: spacing.xs,
   },
   memberSinceText: {
     ...typography.caption,
@@ -626,29 +632,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.xl,
     marginBottom: spacing.sm,
-  },
-  statisticsRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-  statisticsItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  statisticsInnerDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.md,
-  },
-  statisticsValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  statisticsLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '500',
   },
 });

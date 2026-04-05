@@ -63,6 +63,17 @@ export function TournamentStandingsScreen({ route }: Props) {
     );
   }
 
+  const noGames = !match.tournamentGames?.length;
+  const isCompleted = match.status === 'completed';
+  if (noGames && isCompleted) {
+    return (
+      <View style={styles.centered}>
+        <Ionicons name="alert-circle-outline" size={32} color={colors.error} />
+        <Text style={[styles.error, { marginTop: spacing.md }]}>{t('match.tournamentNotEnoughTeams')}</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.intro}>{t('match.standingsIntro')}</Text>

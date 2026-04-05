@@ -9,6 +9,7 @@ interface Props {
   currentPlayers: number;
   maxPlayers: number;
   large?: boolean;
+  matchStatus?: string;
   onPress?: () => void;
 }
 
@@ -17,6 +18,7 @@ export function PlayerCountBadge({
   currentPlayers: initialCurrent,
   maxPlayers,
   large = false,
+  matchStatus,
   onPress,
 }: Props) {
   const { t } = useTranslation();
@@ -58,11 +60,13 @@ export function PlayerCountBadge({
             <Text style={styles.largeMax}>/{maxPlayers}</Text>
           </Text>
           <Text style={styles.spotsLabel}>
-            {spotsLeft <= 0
+            {spotsLeft <= 0 && matchStatus !== 'completed' && matchStatus !== 'cancelled'
               ? t('match.full')
-              : spotsLeft === 1
-                ? t('match.oneSpotLeft')
-                : t('match.spotsLeft', { count: spotsLeft })}
+              : spotsLeft <= 0
+                ? `${currentPlayers}/${maxPlayers}`
+                : spotsLeft === 1
+                  ? t('match.oneSpotLeft')
+                  : t('match.spotsLeft', { count: spotsLeft })}
           </Text>
         </View>
         <View style={styles.progressBar}>

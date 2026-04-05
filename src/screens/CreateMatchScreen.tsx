@@ -380,40 +380,6 @@ export function CreateMatchScreen({ navigation, route }: Props) {
     tournamentSystem === 'round_robin' && roundRobinMatchCount > 15;
 
   // Estimated tournament duration
-  const estimatedDuration = useMemo(() => {
-    let totalMatches: number;
-    switch (tournamentSystem) {
-      case 'round_robin':
-        totalMatches = teamCount * (teamCount - 1) / 2;
-        break;
-      case 'pools_finals': {
-        const poolCount = teamCount > 8 ? 4 : 2;
-        const perPool = Math.ceil(teamCount / poolCount);
-        const poolMatches = poolCount * (perPool * (perPool - 1) / 2);
-        const finalsMatches = poolCount === 4 ? 3 : 1; // semis + final or just final
-        totalMatches = poolMatches + finalsMatches;
-        break;
-      }
-      case 'single_elimination': {
-        totalMatches = teamCount - 1;
-        break;
-      }
-      default:
-        totalMatches = teamCount - 1;
-    }
-
-    const avgMatchMinutes = Math.round(tournamentPointsPerMatch * 1.2);
-    const maxParallel = Math.min(tournamentCourtCount, Math.floor(teamCount / 2));
-    const rounds = Math.ceil(totalMatches / Math.max(1, maxParallel));
-    const totalMinutes = rounds * avgMatchMinutes;
-
-    const hours = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
-    if (hours > 0 && mins > 0) return `~${hours}h${String(mins).padStart(2, '0')}`;
-    if (hours > 0) return `~${hours}h`;
-    return `~${totalMinutes}min`;
-  }, [tournamentSystem, teamCount, tournamentPointsPerMatch, tournamentCourtCount]);
-
   const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
     if (event.type === 'dismissed') {
       return;
@@ -655,7 +621,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
 
         {/* Date */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+          <Text style={[styles.sectionTitle, { color: colors.white }]}>
             <Ionicons name="calendar-outline" size={16} color={colors.primary} />{' '}
             {t('createMatch.dateTime')}
           </Text>
@@ -696,10 +662,9 @@ export function CreateMatchScreen({ navigation, route }: Props) {
             activeOpacity={0.75}
           >
             <View style={styles.mapPinRowLeft}>
-              <Ionicons name="location-outline" size={22} color={colors.primary} />
+              <Ionicons name="pin" size={22} color={colors.primary} />
               {!selectedCourt ? (
                 <View style={styles.mapPinPlaceholder}>
-                  <Ionicons name="map-outline" size={18} color={colors.textMuted} />
                   <Text style={styles.mapPinRowText}>{t('createMatch.pinOnMap')}</Text>
                 </View>
               ) : (
@@ -760,7 +725,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
         {/* Format du match / tournoi */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            <Ionicons name="people" size={16} color={colors.primary} />{' '}
+            <Ionicons name="people-outline" size={16} color={colors.primary} />{' '}
             {eventMode === 'match'
               ? t('createMatch.matchFormatTitle')
               : t('createMatch.tournamentFormatTitle')}
@@ -1016,27 +981,6 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                 ))}
               </View>
 
-              <View style={styles.durationEstimate}>
-                <View style={styles.durationIconWrap}>
-                  <Ionicons name="time-outline" size={18} color={colors.primary} />
-                </View>
-                <View style={styles.durationTextWrap}>
-                  <Text style={styles.durationLabel}>
-                    {t('createMatch.estimatedDuration')}
-                  </Text>
-                  <Text style={styles.durationValue}>{estimatedDuration}</Text>
-                </View>
-                <Pressable
-                  style={styles.durationInfoBtn}
-                  onPress={() => Alert.alert(
-                    t('createMatch.estimatedDuration'),
-                    t('createMatch.estimatedDurationExplanation'),
-                  )}
-                  hitSlop={8}
-                >
-                  <Text style={styles.durationInfoBtnText}>i</Text>
-                </Pressable>
-              </View>
             </>
           )}
         </View>
@@ -1044,7 +988,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
         {/* Niveau */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            <Ionicons name="trophy" size={16} color={colors.primary} />{' '}
+            <Ionicons name="trophy-outline" size={16} color={colors.primary} />{' '}
             {t('createMatch.skillLevel')}
           </Text>
           <View style={styles.chips}>
@@ -1447,7 +1391,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   dateText: {
-    color: colors.text,
+    color: colors.primary,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -1587,54 +1531,6 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: colors.white,
-  },
-  durationEstimate: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  durationIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary + '18',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  durationTextWrap: {
-    flex: 1,
-  },
-  durationInfoBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.textMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  durationInfoBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.textSecondary,
-  },
-  durationLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  durationValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.text,
-    marginTop: 2,
   },
   roundRobinWarning: {
     flexDirection: 'row',

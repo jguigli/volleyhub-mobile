@@ -4,6 +4,7 @@ import {
   Alert,
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -63,8 +64,8 @@ export function UserProfileScreen({ route, navigation }: Props) {
   const localeTag = localeToBcp47(locale);
   const { userId } = route.params;
   const currentUser = useAuthStore((s) => s.user);
-  const { data: profile, isLoading, error } = usePublicProfile(userId);
-  const { data: stats, isLoading: statsLoading } = useUserMatchStats(userId, statsFormat);
+  const { data: profile, isLoading, error, refetch: refetchProfile, isFetching: profileFetching } = usePublicProfile(userId);
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats, isFetching: statsFetching } = useUserMatchStats(userId, statsFormat);
   const { unfollow } = useFollow(userId);
   const sendRequest = useSendFollowRequest(userId);
   const cancelRequest = useCancelFollowRequest(userId);
@@ -90,8 +91,7 @@ export function UserProfileScreen({ route, navigation }: Props) {
     );
   }
 
-  const relationsTotal =
-    (profile.followersCount ?? 0) + (profile.followingCount ?? 0);
+  const relationsTotal = profile.followersCount ?? 0;
   const relationsText =
     relationsTotal === 0
       ? t('profile.relationsOnlyZero')
@@ -185,6 +185,7 @@ export function UserProfileScreen({ route, navigation }: Props) {
       style={styles.container}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={profileFetching || statsFetching} onRefresh={() => { refetchProfile(); refetchStats(); }} />}
     >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -326,16 +327,15 @@ export function UserProfileScreen({ route, navigation }: Props) {
             <Text style={styles.sectionTitle}>{t('profile.club')}</Text>
           </View>
           <View style={styles.clubBlockCard}>
-            <View>
-              <Text style={styles.clubSubsectionLabel}>{t('profile.clubSubsectionName')}</Text>
-              <Text style={styles.clubSubsectionValue} numberOfLines={4}>
+            <View style={styles.clubLine}>
+              <Text style={styles.clubLineLabel}>{t('profile.clubSubsectionName')} :</Text>
+              <Text style={styles.clubLineValue} numberOfLines={2}>
                 {clubRaw || t('profile.clubNotSpecified')}
               </Text>
             </View>
-            <View style={styles.clubBlockSubsectionDivider} />
-            <View>
-              <Text style={styles.clubSubsectionLabel}>{t('profile.competition')}</Text>
-              <Text style={styles.clubSubsectionValue} numberOfLines={4}>
+            <View style={styles.clubLine}>
+              <Text style={styles.clubLineLabel}>{t('profile.competition')} :</Text>
+              <Text style={styles.clubLineValue} numberOfLines={2}>
                 {showCompetition ? competitionLabelText : t('profile.competitionsNone')}
               </Text>
             </View>
@@ -343,89 +343,64 @@ export function UserProfileScreen({ route, navigation }: Props) {
         </View>
       )}
 
-      <View style={styles.sectionHeader}>
-        <Ionicons name="calendar-outline" size={16} color={colors.primary} />
-        <Text style={styles.sectionTitle}>{t('profile.parties')}</Text>
-      </View>
-      <View style={styles.statsModeSwitchWrap}>
-        <Pressable
-          style={[
-            styles.statsModeChip,
-            statsFormat === 'match' ? styles.statsModeChipActive : null,
-          ]}
-          onPress={() => setStatsFormat('match')}
-        >
-          <Text
-            style={[
-              styles.statsModeChipText,
-              statsFormat === 'match' ? styles.statsModeChipTextActive : null,
-            ]}
-          >
-            {t('match.eventMatch')}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[
-            styles.statsModeChip,
-            statsFormat === 'tournament' ? styles.statsModeChipActive : null,
-          ]}
-          onPress={() => setStatsFormat('tournament')}
-        >
-          <Text
-            style={[
-              styles.statsModeChipText,
-              statsFormat === 'tournament' ? styles.statsModeChipTextActive : null,
-            ]}
-          >
-            {t('match.eventTournament')}
-          </Text>
-        </Pressable>
-      </View>
-      <View style={styles.statsCard}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>
-            {statsLoading ? '–' : stats?.played ?? 0}
-          </Text>
-          <Text style={styles.statLabel}>{t('profile.played')}</Text>
+      <View style={styles.tabBlock}>
+        <View style={styles.tabBlockHeaderTinted}>
+          <Pressable style={styles.tabBlockHeaderHalf} onPress={() => setStatsFormat('match')}>
+            <Text style={[
+              styles.tabBlockHeaderTitle,
+              statsFormat === 'match' ? styles.tabBlockHeaderActive : styles.tabBlockHeaderInactive,
+            ]}>{t('match.eventMatch')}</Text>
+          </Pressable>
+          <View style={styles.tabBlockHeaderDivider} />
+          <Pressable style={styles.tabBlockHeaderHalf} onPress={() => setStatsFormat('tournament')}>
+            <Text style={[
+              styles.tabBlockHeaderTitle,
+              statsFormat === 'tournament' ? styles.tabBlockHeaderActive : styles.tabBlockHeaderInactive,
+            ]}>{t('match.eventTournament')}</Text>
+          </Pressable>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>
-            {statsLoading ? '–' : stats?.created ?? 0}
-          </Text>
-          <Text style={styles.statLabel}>{t('profile.created')}</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>
-            {statsLoading ? '–' : stats?.upcoming ?? 0}
-          </Text>
-          <Text style={styles.statLabel}>{t('profile.upcoming')}</Text>
-        </View>
-      </View>
 
-      <View style={styles.statisticsCard}>
-        <View style={styles.statisticsRow}>
-          <View style={styles.statisticsItem}>
-            <Text style={styles.statisticsValue}>{wins}</Text>
-            <Text style={styles.statisticsLabel}>{t('profile.wins')}</Text>
+        <View style={styles.statsGrid}>
+          {/* Ligne 1 : Jou\u00e9s, Cr\u00e9\u00e9s, \u00c0 venir */}
+          <View style={styles.statsGridRow}>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{statsLoading ? '\u2013' : stats?.played ?? 0}</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.played')}</Text>
+            </View>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{statsLoading ? '\u2013' : stats?.created ?? 0}</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.created')}</Text>
+            </View>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{statsLoading ? '\u2013' : stats?.upcoming ?? 0}</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.upcoming')}</Text>
+            </View>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statisticsItem}>
-            <Text style={styles.statisticsValue}>{losses}</Text>
-            <Text style={styles.statisticsLabel}>{t('profile.losses')}</Text>
+
+          <View style={styles.statsGridDivider} />
+
+          {/* Ligne 2 : Victoires, D\u00e9faites */}
+          <View style={styles.statsGridRow}>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{wins}</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.wins')}</Text>
+            </View>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{losses}</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.losses')}</Text>
+            </View>
           </View>
-        </View>
-        <View style={styles.statisticsInnerDivider} />
-        <View style={styles.statisticsRow}>
-          <View style={styles.statisticsItem}>
-            <Text style={styles.statisticsValue}>{winRate}%</Text>
-            <Text style={styles.statisticsLabel}>{t('profile.winRate')}</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statisticsItem}>
-            <Text style={styles.statisticsValue}>{streak}</Text>
-            <Text style={styles.statisticsLabel}>{t('profile.currentStreak')}</Text>
+
+          {/* Ligne 3 : Ratio, S\u00e9rie */}
+          <View style={styles.statsGridRow}>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{winRate}%</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.winRate')}</Text>
+            </View>
+            <View style={styles.statsGridCell}>
+              <Text style={styles.statsGridValue}>{streak}</Text>
+              <Text style={styles.statsGridLabel}>{t('profile.currentStreak')}</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -527,6 +502,7 @@ const styles = StyleSheet.create({
   },
   incomingBanner: {
     marginHorizontal: spacing.md,
+    marginTop: spacing.md,
     marginBottom: spacing.md,
     padding: spacing.md,
     backgroundColor: colors.primary + '18',
@@ -586,22 +562,22 @@ const styles = StyleSheet.create({
     ...shadows.card,
     alignSelf: 'stretch',
   },
-  clubSubsectionLabel: {
-    fontSize: 12,
+  clubLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  clubLineLabel: {
+    fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
   },
-  clubSubsectionValue: {
-    ...typography.body,
-    fontSize: 15,
-    fontWeight: '600',
+  clubLineValue: {
+    fontSize: 14,
+    fontWeight: '700',
     color: colors.text,
-  },
-  clubBlockSubsectionDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.md,
+    flexShrink: 1,
   },
   bioAfterHeader: {
     marginHorizontal: spacing.md,
@@ -689,99 +665,78 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
   },
-  statsModeSwitchWrap: {
-    flexDirection: 'row',
+  tabBlock: {
     marginHorizontal: spacing.md,
-    marginTop: spacing.xs,
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
+    marginTop: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    overflow: 'hidden',
+    ...shadows.card,
   },
-  statsModeChip: {
+  tabBlockHeaderTinted: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary + '12',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tabBlockHeaderHalf: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.sm + 4,
-    backgroundColor: colors.surface,
+    paddingVertical: spacing.sm + 2,
   },
-  statsModeChipActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '22',
+  tabBlockHeaderDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: colors.border,
   },
-  statsModeChipText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    fontWeight: '600',
+  tabBlockHeaderTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
-  statsModeChipTextActive: {
+  tabBlockHeaderActive: {
     color: colors.primary,
   },
-  statsCard: {
-    flexDirection: 'row',
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.sm,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.card,
+  tabBlockHeaderInactive: {
+    color: colors.textMuted,
   },
-  statItem: {
+  statsGrid: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  statsGridRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  statsGridCell: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    gap: 2,
   },
-  statValue: {
-    fontSize: 28,
+  statsGridValue: {
+    fontSize: 22,
     fontWeight: '700',
     color: colors.text,
   },
-  statLabel: {
-    fontSize: 11,
+  statsGridLabel: {
+    fontSize: 10,
+    fontWeight: '600',
     color: colors.textSecondary,
-    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
     textAlign: 'center',
   },
-  statDivider: {
-    width: 1,
-    backgroundColor: colors.border,
-    marginVertical: 4,
-  },
-  statisticsCard: {
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.lg,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.card,
-  },
-  statisticsRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-  statisticsItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  statisticsInnerDivider: {
+  statsGridDivider: {
     height: 1,
     backgroundColor: colors.border,
-    marginVertical: spacing.md,
-  },
-  statisticsValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  statisticsLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '500',
+    marginVertical: spacing.xs,
   },
 });

@@ -87,60 +87,41 @@ export function MatchCard({
       : timingBadge === 'live'
         ? `${liveMinutes} min`
         : t('match.statusPast');
+  const isFull = match.status === 'full';
   const livePulse = useRef(new Animated.Value(1)).current;
-  const courtsBorderPulse = useRef(new Animated.Value(0)).current;
+  const teamsBorderPulse = useRef(new Animated.Value(0)).current;
+  const pulseTeamsBtn = timingBadge === 'upcoming' && !isFull;
 
   useEffect(() => {
-    if (timingBadge !== 'live') {
-      livePulse.stopAnimation();
-      livePulse.setValue(1);
-      courtsBorderPulse.stopAnimation();
-      courtsBorderPulse.setValue(0);
+    if (timingBadge === 'live') {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(livePulse, { toValue: 0.42, duration: 560, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(livePulse, { toValue: 1, duration: 560, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+      );
+      loop.start();
+      return () => { loop.stop(); livePulse.setValue(1); };
+    }
+    livePulse.stopAnimation();
+    livePulse.setValue(1);
+  }, [livePulse, timingBadge]);
+
+  useEffect(() => {
+    if (!pulseTeamsBtn) {
+      teamsBorderPulse.stopAnimation();
+      teamsBorderPulse.setValue(0);
       return;
     }
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(livePulse, {
-          toValue: 0.42,
-          duration: 560,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(livePulse, {
-          toValue: 1,
-          duration: 560,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
+        Animated.timing(teamsBorderPulse, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(teamsBorderPulse, { toValue: 0, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
       ]),
     );
     loop.start();
-
-    const courtsLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(courtsBorderPulse, {
-          toValue: 1,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
-        }),
-        Animated.timing(courtsBorderPulse, {
-          toValue: 0,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
-        }),
-      ]),
-    );
-    courtsLoop.start();
-
-    return () => {
-      loop.stop();
-      livePulse.setValue(1);
-      courtsLoop.stop();
-      courtsBorderPulse.setValue(0);
-    };
-  }, [livePulse, courtsBorderPulse, timingBadge]);
+    return () => { loop.stop(); teamsBorderPulse.setValue(0); };
+  }, [teamsBorderPulse, pulseTeamsBtn]);
 
   return (
     <TouchableOpacity
@@ -275,13 +256,25 @@ export function MatchCard({
         <View style={styles.footerIconRow}>
           {onTeamsPress ? (
             <Pressable
-              style={styles.footerIconBtn}
               onPress={() => onTeamsPress(match)}
               hitSlop={{ top: 6, bottom: 6, left: 8, right: 8 }}
               accessibilityRole="button"
               accessibilityLabel={t('match.viewTeamsBoard')}
             >
-              <MaterialCommunityIcons name="account-group-outline" size={28} color={colors.primary} />
+              <Animated.View
+                style={[
+                  styles.footerIconBtn,
+                  pulseTeamsBtn && {
+                    borderColor: teamsBorderPulse.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [colors.border, colors.primary],
+                    }),
+                    borderWidth: 2,
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons name="account-group-outline" size={28} color={colors.primary} />
+              </Animated.View>
             </Pressable>
           ) : null}
           {onScorePress ? (
@@ -297,25 +290,13 @@ export function MatchCard({
           ) : null}
           {tournament && onCourtsPress ? (
             <Pressable
+              style={styles.footerIconBtn}
               onPress={() => onCourtsPress(match)}
               hitSlop={{ top: 6, bottom: 6, left: 8, right: 8 }}
               accessibilityRole="button"
               accessibilityLabel={t('match.viewTournamentCourts')}
             >
-              <Animated.View
-                style={[
-                  styles.footerIconBtn,
-                  timingBadge === 'live' && {
-                    borderColor: courtsBorderPulse.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [colors.border, colors.primary],
-                    }),
-                    borderWidth: 2,
-                  },
-                ]}
-              >
-                <Ionicons name="grid-outline" size={28} color={colors.primary} />
-              </Animated.View>
+              <Ionicons name="grid-outline" size={28} color={colors.primary} />
             </Pressable>
           ) : null}
         </View>

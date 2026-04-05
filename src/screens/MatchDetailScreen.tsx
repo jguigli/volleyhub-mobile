@@ -6,6 +6,7 @@ import {
   Easing,
   Image,
   Modal,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -240,7 +241,7 @@ export function MatchDetailScreen({ route, navigation }: Props) {
     navigateToUserProfile(navigation, userId, currentUser?.id);
   };
   const user = useAuthStore((s) => s.user);
-  const { data: match, isLoading, error } = useMatch(matchId);
+  const { data: match, isLoading, error, refetch, isFetching } = useMatch(matchId);
   const unreadChat = useUnreadMatchChat(matchId, user?.id);
 
   useFocusEffect(
@@ -304,15 +305,29 @@ export function MatchDetailScreen({ route, navigation }: Props) {
       (match.creatorId === user.id ||
         match.participants.some((p) => p.userId === user.id));
     const showChat = Boolean(participant);
+    const showGuide = !showSettings;
     const detailsTitle = isTournamentMatch(match)
       ? t('nav.tournamentDetails')
       : t('nav.matchDetails');
     navigation.setOptions({
       title: detailsTitle,
       headerRight:
-        showChat || showSettings
+        showChat || showSettings || showGuide
           ? () => (
               <View style={styles.headerActions}>
+                {showGuide ? (
+                  <Pressable
+                    onPress={() =>
+                      navigation.navigate('EventGuide', { matchId: match.id })
+                    }
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={styles.headerSettingsBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('match.eventGuideTitle')}
+                  >
+                    <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
+                  </Pressable>
+                ) : null}
                 {showSettings ? (
                   <Pressable
                     onPress={() =>
@@ -391,37 +406,26 @@ export function MatchDetailScreen({ route, navigation }: Props) {
   }, [livePulse, timingBadgeForPulse]);
 
   const bottomInset = useBottomInset();
-  const courtsPulse = useRef(new Animated.Value(0)).current;
+  const teamsBtnPulse = useRef(new Animated.Value(0)).current;
+  const pulseTeamsBtn = Boolean(
+    match &&
+      timingBadgeForPulse === 'upcoming' &&
+      match.status !== 'full',
+  );
   useEffect(() => {
-    if (!match || !isTournamentMatch(match)) return;
-    const isLive =
-      match.status !== 'completed' &&
-      match.status !== 'cancelled' &&
-      Date.now() >= new Date(match.scheduledAt).getTime();
-    if (!isLive) {
-      courtsPulse.setValue(0);
+    if (!pulseTeamsBtn) {
+      teamsBtnPulse.setValue(0);
       return;
     }
-
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(courtsPulse, {
-          toValue: 1,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
-        }),
-        Animated.timing(courtsPulse, {
-          toValue: 0,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
-        }),
+        Animated.timing(teamsBtnPulse, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(teamsBtnPulse, { toValue: 0, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
       ]),
     );
     loop.start();
     return () => loop.stop();
-  }, [match?.id, match?.status, match?.scheduledAt, courtsPulse]);
+  }, [pulseTeamsBtn, teamsBtnPulse]);
 
   const [nowTick, setNowTick] = useState(Date.now());
   useEffect(() => {
@@ -532,6 +536,7 @@ export function MatchDetailScreen({ route, navigation }: Props) {
       style={styles.container}
       contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
       showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} />}
     >
       {/* Header: pill + status */}
       <View style={[styles.section, styles.sectionPrimary]}>
@@ -672,15 +677,12 @@ export function MatchDetailScreen({ route, navigation }: Props) {
           </View>
           <Pressable
             style={styles.detailInfoInlineRow}
-            onPress={match.creatorId !== user?.id ? () => navigateToProfile(match.creatorId) : undefined}
+            onPress={() => navigateToProfile(match.creatorId)}
           >
             <Ionicons name="person-outline" size={16} color={colors.primary} />
             <Text style={styles.detailInfoTitleMuted}>{t('match.organizedBy')} :</Text>
             <Text
-              style={[
-                styles.detailInfoInlineValue,
-                match.creatorId !== user?.id && styles.detailLink,
-              ]}
+              style={[styles.detailInfoInlineValue, styles.detailLink]}
               numberOfLines={1}
             >
               {match.creator.username}
@@ -701,6 +703,7 @@ export function MatchDetailScreen({ route, navigation }: Props) {
             matchId={matchId}
             currentPlayers={match.currentPlayers}
             maxPlayers={match.maxPlayers}
+            matchStatus={match.status}
             large
             onPress={() =>
               navigation.navigate('MatchParticipants', { matchId })
@@ -714,14 +717,26 @@ export function MatchDetailScreen({ route, navigation }: Props) {
         {/* Action buttons */}
         <View style={styles.tournamentActionsRow}>
           <TouchableOpacity
-            style={styles.tournamentActionBtn}
             onPress={() => navigation.navigate('MatchTeamsBoard', { matchId })}
             activeOpacity={0.8}
+            style={{ flex: 1 }}
           >
-            <MaterialCommunityIcons name="account-group-outline" size={22} color={colors.primary} />
-            <Text style={styles.tournamentActionBtnText}>
-              {t('match.teamsButton')}
-            </Text>
+            <Animated.View
+              style={[
+                styles.tournamentActionBtn,
+                pulseTeamsBtn && {
+                  borderColor: teamsBtnPulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [colors.primary + '44', colors.primary],
+                  }),
+                },
+              ]}
+            >
+              <MaterialCommunityIcons name="account-group-outline" size={22} color={colors.primary} />
+              <Text style={styles.tournamentActionBtnText}>
+                {t('match.teamsButton')}
+              </Text>
+            </Animated.View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -737,26 +752,14 @@ export function MatchDetailScreen({ route, navigation }: Props) {
 
           {tournament ? (
             <TouchableOpacity
+              style={styles.tournamentActionBtn}
               onPress={() => navigation.navigate('TournamentCourts', { matchId })}
               activeOpacity={0.8}
-              style={{ flex: 1 }}
             >
-              <Animated.View
-                style={[
-                  styles.tournamentActionBtn,
-                  timingBadge === 'live' && {
-                    borderColor: courtsPulse.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [colors.primary + '44', colors.primary],
-                    }),
-                  },
-                ]}
-              >
-                <Ionicons name="grid-outline" size={20} color={colors.primary} />
-                <Text style={styles.tournamentActionBtnText}>
-                  {t('match.viewTournamentCourts')}
-                </Text>
-              </Animated.View>
+              <Ionicons name="grid-outline" size={20} color={colors.primary} />
+              <Text style={styles.tournamentActionBtnText}>
+                {t('match.viewTournamentCourts')}
+              </Text>
             </TouchableOpacity>
           ) : null}
         </View>
