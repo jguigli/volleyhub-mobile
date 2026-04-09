@@ -16,7 +16,7 @@ import {
 } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { FindStackParamList, MatchesStackParamList } from '../navigation/types';
-import { useManageMatch, useMatch } from '../hooks/useMatches';
+import { useManageMatch, useMatch, useRenewMatch } from '../hooks/useMatches';
 import { useAuthStore } from '../store/auth.store';
 import { useTranslation } from '../i18n';
 import { countSetsWonFromScores, isTournamentMatch } from '../utils/matchDisplay';
@@ -58,6 +58,7 @@ export function EventScoreScreen({ route, navigation }: Props) {
   const currentUser = useAuthStore((s) => s.user);
   const { data: match, isLoading, error, refetch, isFetching } = useMatch(matchId);
   const manageMut = useManageMatch();
+  const renewMut = useRenewMatch();
 
   const [setRows, setSetRows] = useState<SetRow[]>([]);
   const [initialized, setInitialized] = useState(false);
@@ -91,6 +92,8 @@ export function EventScoreScreen({ route, navigation }: Props) {
 
   const canManage = Boolean(match && currentUser?.id === match.creatorId);
   const tournament = match ? isTournamentMatch(match) : false;
+  const scoringRule = match?.scoringRule ?? 'point_sec';
+  const isTwoPointGap = scoringRule === 'two_point_gap';
 
   const isOngoing = Boolean(
     match &&
@@ -190,14 +193,35 @@ export function EventScoreScreen({ route, navigation }: Props) {
 
   const onSetChange = (index: number, side: 'teamA' | 'teamB', val: string) => {
     const onlyDigits = val.replace(/[^\d]/g, '');
-    const clamped =
-      onlyDigits === ''
-        ? ''
-        : String(Math.min(maxSetPoints, Number.parseInt(onlyDigits, 10) || 0));
+    if (onlyDigits === '') {
+      setSetRows((prev) => prev.map((r, i) => (i === index ? { ...r, [side]: '' } : r)));
+      return;
+    }
+    let num = isTwoPointGap
+      ? (Number.parseInt(onlyDigits, 10) || 0)
+      : Math.min(maxSetPoints, Number.parseInt(onlyDigits, 10) || 0);
+
     setSetRows((prev) =>
-      prev.map((r, i) =>
-        i === index ? { ...r, [side]: clamped } : r,
-      ),
+      prev.map((r, i) => {
+        if (i !== index) return r;
+        const otherSide = side === 'teamA' ? 'teamB' : 'teamA';
+        const otherVal = Number.parseInt(r[otherSide], 10);
+        let updated = { ...r, [side]: String(num) };
+
+        if (!isTwoPointGap) {
+          // Point sec: si l'autre est à maxSetPoints, clamp à maxSetPoints - 1
+          if (Number.isFinite(otherVal) && otherVal === maxSetPoints && num >= maxSetPoints) {
+            num = maxSetPoints - 1;
+            updated = { ...r, [side]: String(num) };
+          }
+          // Point sec: si je tape maxSetPoints, clamp l'autre à maxSetPoints - 1
+          if (num === maxSetPoints && Number.isFinite(otherVal) && otherVal >= maxSetPoints) {
+            updated = { ...updated, [otherSide]: String(maxSetPoints - 1) };
+          }
+        }
+
+        return updated;
+      }),
     );
   };
 
@@ -210,6 +234,8 @@ export function EventScoreScreen({ route, navigation }: Props) {
 
     const parsedSets: { teamA: number; teamB: number }[] = [];
     for (let i = 0; i < Math.min(setRows.length, totalSets); i += 1) {
+      // Skip locked rows (auto-zeroed after match is clinched)
+      if (lockRowsFromIndex >= 0 && i >= lockRowsFromIndex) break;
       const row = setRows[i];
       const a = row.teamA.trim();
       const b = row.teamB.trim();
@@ -221,10 +247,37 @@ export function EventScoreScreen({ route, navigation }: Props) {
         return;
       }
       try {
-        parsedSets.push({
-          teamA: parseScoreWithMax(a, maxSetPoints),
-          teamB: parseScoreWithMax(b, maxSetPoints),
-        });
+        const scoreA = isTwoPointGap ? parseScore(a) : parseScoreWithMax(a, maxSetPoints);
+        const scoreB = isTwoPointGap ? parseScore(b) : parseScoreWithMax(b, maxSetPoints);
+        if (scoreA === scoreB) {
+          Alert.alert(t('common.error'), t('match.scoreNoTie'));
+          return;
+        }
+        if (isTwoPointGap) {
+          const hi = Math.max(scoreA, scoreB);
+          const lo = Math.min(scoreA, scoreB);
+          const valid =
+            hi >= maxSetPoints &&
+            hi - lo === 2 &&
+            (hi === maxSetPoints ? lo <= maxSetPoints - 2 : true);
+          if (!valid) {
+            Alert.alert(t('common.error'), t('match.scoreTwoPointGapError', { pts: String(maxSetPoints) }));
+            return;
+          }
+        } else {
+          // Point sec: winner must have exactly pointsToWin, loser must have less
+          const hi = Math.max(scoreA, scoreB);
+          const lo = Math.min(scoreA, scoreB);
+          if (hi !== maxSetPoints) {
+            Alert.alert(t('common.error'), t('match.scorePointSecError', { pts: String(maxSetPoints) }));
+            return;
+          }
+          if (lo >= maxSetPoints) {
+            Alert.alert(t('common.error'), t('match.scoreNoTie'));
+            return;
+          }
+        }
+        parsedSets.push({ teamA: scoreA, teamB: scoreB });
       } catch {
         Alert.alert(t('common.error'), t('match.invalidScores', { max: String(maxSetPoints) }));
         return;
@@ -250,11 +303,35 @@ export function EventScoreScreen({ route, navigation }: Props) {
         setScores: payloadSets,
       });
       Alert.alert('', t('match.manageSaved'));
-      navigation.goBack();
+      setInitialized(false);
+      refetch();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : t('match.manageFailed');
       Alert.alert(t('common.error'), msg);
     }
+  };
+
+  const handleRenew = () => {
+    Alert.alert(
+      t('match.renewMatchConfirmTitle'),
+      t('match.renewMatchConfirmMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('match.renewMatchConfirmAction'),
+          onPress: async () => {
+            try {
+              const m = await renewMut.mutateAsync(matchId);
+              navigation.goBack();
+              (navigation as any).replace('MatchDetail', { matchId: m.id });
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : t('match.renewMatchFailed');
+              Alert.alert(t('common.error'), msg);
+            }
+          },
+        },
+      ],
+    );
   };
 
   if (isLoading || !initialized) {
@@ -414,6 +491,25 @@ export function EventScoreScreen({ route, navigation }: Props) {
               <ActivityIndicator color={colors.white} />
             ) : (
               <Text style={styles.primaryBtnText}>{t('match.saveManage')}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {canManage && !tournament && match.status === 'completed' ? (
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={[styles.renewBtn, renewMut.isPending && styles.btnDisabled]}
+            onPress={handleRenew}
+            disabled={renewMut.isPending}
+          >
+            {renewMut.isPending ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : (
+              <>
+                <Ionicons name="refresh-outline" size={20} color={colors.primary} />
+                <Text style={styles.renewBtnText}>{t('match.renewMatchSectionTitle')}</Text>
+              </>
             )}
           </TouchableOpacity>
         </View>
@@ -720,4 +816,20 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { ...typography.button, color: colors.white, fontSize: 16 },
   btnDisabled: { opacity: 0.6 },
+  renewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary + '55',
+    backgroundColor: colors.primary + '12',
+  },
+  renewBtnText: {
+    ...typography.button,
+    color: colors.primary,
+    fontSize: 16,
+  },
 });

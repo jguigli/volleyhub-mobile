@@ -3,7 +3,7 @@
  * Points bleus = terrains du référentiel uniquement. Les matchs sur lieu « pin » n’ont pas de point bleu.
  */
 
-import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
@@ -48,26 +48,6 @@ const DEFAULT_LNG = 2.3522;
 const DEFAULT_RADIUS = 15000;
 const DEFAULT_DELTA = 0.15;
 
-/** Marker that tracks view changes briefly after mount then stops to avoid flicker/jump.
- *  If forceTrack is true, re-enables tracking temporarily (e.g. selection change). */
-const StableMarker = React.memo(function StableMarker(
-  props: React.ComponentProps<typeof Marker> & { forceTrack?: boolean },
-) {
-  const { forceTrack, ...rest } = props;
-  const [track, setTrack] = useState(true);
-  useEffect(() => {
-    const timer = setTimeout(() => setTrack(false), 1000);
-    return () => clearTimeout(timer);
-  }, []);
-  useEffect(() => {
-    if (forceTrack) {
-      setTrack(true);
-      const timer = setTimeout(() => setTrack(false), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [forceTrack]);
-  return <Marker {...rest} tracksViewChanges={track} />;
-});
 
 export function MapScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
@@ -82,11 +62,8 @@ export function MapScreen({ navigation, route }: Props) {
   const userLat = lat ?? DEFAULT_LAT;
   const userLng = lng ?? DEFAULT_LNG;
 
-  const [mapRegionCenter, setMapRegionCenter] = useState(() => ({
-    latitude: userLat,
-    longitude: userLng,
-  }));
   const [mapZoomDelta, setMapZoomDelta] = useState(DEFAULT_DELTA);
+  const mapCenterRef = useRef({ latitude: userLat, longitude: userLng });
 
   const initialRegion: Region = {
     latitude: userLat,
@@ -95,20 +72,13 @@ export function MapScreen({ navigation, route }: Props) {
     longitudeDelta: DEFAULT_DELTA,
   };
 
-  const dynamicRadius = useMemo(
-    () =>
-      Math.max(
-        DEFAULT_RADIUS,
-        Math.min(1200000, Math.round(mapZoomDelta * 111000 * 0.9)),
-      ),
-    [mapZoomDelta],
-  );
-
+  // Single fetch on mount with large fixed radius — no refetch on pan/zoom
+  const FETCH_RADIUS = 500_000; // 500km from user position
   const { data: matches, isLoading: matchesLoading } = useNearbyMatches({
-    lat: mapRegionCenter.latitude,
-    lng: mapRegionCenter.longitude,
-    radius: dynamicRadius,
-    zoomDelta: mapZoomDelta,
+    lat: userLat,
+    lng: userLng,
+    radius: FETCH_RADIUS,
+    zoomDelta: DEFAULT_DELTA,
   });
 
   const matchMarkers = useMemo(() => {
@@ -126,18 +96,16 @@ export function MapScreen({ navigation, route }: Props) {
     return all;
   }, [matches, eventFilter]);
 
+  const shouldCluster = mapZoomDelta > 0.08 || matchMarkers.length > 30;
   const clusterCellSize = useMemo(
     () => Math.max(0.01, mapZoomDelta / 7),
     [mapZoomDelta],
   );
-  const shouldCluster = mapZoomDelta > 0.08;
   const clustered = useMemo(() => {
-    if (!shouldCluster) {
-      return [];
-    }
+    if (!shouldCluster) return [];
     const buckets = new Map<
       string,
-      { lat: number; lng: number; count: number; matches: (NearbyMatch & { marker_lat: number; marker_lng: number })[] }
+      { lat: number; lng: number; count: number; matches: (typeof matchMarkers)[number][] }
     >();
     for (const m of matchMarkers) {
       const r = Math.floor(m.marker_lat / clusterCellSize);
@@ -204,8 +172,8 @@ export function MapScreen({ navigation, route }: Props) {
     setSelectedMatch(null);
     navigation.navigate('CreateMatch', {
       openMapPicker: true,
-      pickerLat: mapRegionCenter.latitude,
-      pickerLng: mapRegionCenter.longitude,
+      pickerLat: mapCenterRef.current.latitude,
+      pickerLng: mapCenterRef.current.longitude,
     });
   };
 
@@ -226,11 +194,7 @@ export function MapScreen({ navigation, route }: Props) {
         pitchEnabled={false}
         onPress={handleMapPress}
         onRegionChangeComplete={(region) => {
-          setMapRegionCenter({
-            latitude: region.latitude,
-            longitude: region.longitude,
-          });
-          // Round to 2 decimal places to avoid refetching on tiny zoom changes
+          mapCenterRef.current = { latitude: region.latitude, longitude: region.longitude };
           const rounded = Math.round(region.latitudeDelta * 100) / 100;
           if (rounded !== Math.round(mapZoomDelta * 100) / 100) {
             setMapZoomDelta(region.latitudeDelta);
@@ -240,86 +204,70 @@ export function MapScreen({ navigation, route }: Props) {
       >
         {!shouldCluster &&
           matchMarkers.map((match) => {
-          const isFull = match.status === 'full';
-          const isSelected = selectedMatch?.id === match.id;
-          return (
-            <StableMarker
-              key={`match-${match.id}`}
-              coordinate={{
-                latitude: match.marker_lat,
-                longitude: match.marker_lng,
-              }}
-              forceTrack={isSelected}
-              onPress={(e) => {
-                e.stopPropagation();
-                setSelectedMatch(match);
-              }}
-            >
-              <View
-                style={[
-                  styles.matchMarker,
-                  { backgroundColor: matchMarkerBackground(match, isFull) },
-                  isSelected && styles.matchMarkerSelected,
-                ]}
-              >
-                <MaterialCommunityIcons name="volleyball" size={12} color={colors.white} />
-                <Text style={styles.matchMarkerText}>
-                  {match.current_players}/{match.max_players}
-                </Text>
-              </View>
-            </StableMarker>
-          );
-        })}
-
-        {shouldCluster &&
-          clustered.map((group, idx) =>
-            group.count <= 1 ? (
-              <StableMarker
-                key={`single-${group.matches[0].id}`}
+            const isFull = match.status === 'full';
+            const isSelected = selectedMatch?.id === match.id;
+            return (
+              <Marker
+                key={`match-${match.id}`}
                 coordinate={{
-                  latitude: group.matches[0].marker_lat,
-                  longitude: group.matches[0].marker_lng,
+                  latitude: match.marker_lat,
+                  longitude: match.marker_lng,
                 }}
-                tracksViewChanges={false}
+  
                 onPress={(e) => {
                   e.stopPropagation();
-                  setSelectedMatch(group.matches[0]);
+                  setSelectedMatch(match);
                 }}
               >
                 <View
                   style={[
                     styles.matchMarker,
-                    { backgroundColor: matchMarkerBackground(group.matches[0], group.matches[0].status === 'full') },
+                    { backgroundColor: matchMarkerBackground(match, isFull) },
+                    isSelected && styles.matchMarkerSelected,
                   ]}
                 >
                   <MaterialCommunityIcons name="volleyball" size={12} color={colors.white} />
                   <Text style={styles.matchMarkerText}>
-                    {group.matches[0].current_players}/{group.matches[0].max_players}
+                    {match.current_players}/{match.max_players}
                   </Text>
                 </View>
-              </StableMarker>
+              </Marker>
+            );
+          })}
+
+        {shouldCluster &&
+          clustered.map((group, idx) =>
+            group.count === 1 ? (
+              <Marker
+                key={`s-${group.matches[0].id}`}
+                coordinate={{ latitude: group.matches[0].marker_lat, longitude: group.matches[0].marker_lng }}
+
+                onPress={(e) => { e.stopPropagation(); setSelectedMatch(group.matches[0]); }}
+              >
+                <View style={[styles.matchMarker, { backgroundColor: matchMarkerBackground(group.matches[0], group.matches[0].status === 'full') }]}>
+                  <MaterialCommunityIcons name="volleyball" size={12} color={colors.white} />
+                  <Text style={styles.matchMarkerText}>{group.matches[0].current_players}/{group.matches[0].max_players}</Text>
+                </View>
+              </Marker>
             ) : (
-              <StableMarker
-                key={`cluster-${idx}`}
+              <Marker
+                key={`c-${idx}`}
                 coordinate={{ latitude: group.lat, longitude: group.lng }}
-                tracksViewChanges={false}
+
                 onPress={(e) => {
                   e.stopPropagation();
-                  mapRef.current?.animateToRegion(
-                    {
-                      latitude: group.lat,
-                      longitude: group.lng,
-                      latitudeDelta: Math.max(0.02, mapZoomDelta * 0.55),
-                      longitudeDelta: Math.max(0.02, mapZoomDelta * 0.55),
-                    },
-                    320,
-                  );
+                  mapRef.current?.animateToRegion({
+                    latitude: group.lat,
+                    longitude: group.lng,
+                    latitudeDelta: Math.max(0.02, mapZoomDelta * 0.55),
+                    longitudeDelta: Math.max(0.02, mapZoomDelta * 0.55),
+                  }, 320);
                 }}
               >
                 <View style={styles.clusterMarker}>
                   <Text style={styles.clusterText}>{group.count}</Text>
                 </View>
-              </StableMarker>
+              </Marker>
             ),
           )}
       </MapView>
@@ -429,11 +377,6 @@ const styles = StyleSheet.create({
     borderColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    elevation: 6,
   },
   clusterText: {
     color: colors.white,
@@ -449,11 +392,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     borderColor: colors.white,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
   },
   matchMarkerSelected: {
     transform: [{ scale: 1.4 }],

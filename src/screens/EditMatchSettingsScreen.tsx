@@ -32,6 +32,7 @@ export function EditMatchSettingsScreen({ route, navigation }: Props) {
   const [matchSets, setMatchSets] = useState<number | null>(null);
   const [pointsToWin, setPointsToWin] = useState<number | null>(null);
   const [volleyType, setVolleyType] = useState<string | null>(null);
+  const [scoringRule, setScoringRule] = useState<'point_sec' | 'two_point_gap' | null>(null);
   const [initialized, setInitialized] = useState(false);
 
   if (isLoading || !match) {
@@ -46,12 +47,14 @@ export function EditMatchSettingsScreen({ route, navigation }: Props) {
     setMatchSets(match.matchSets ?? 5);
     setPointsToWin(match.pointsToWin ?? 25);
     setVolleyType((match as any).volleyType ?? "classic");
+    setScoringRule(match.scoringRule ?? 'point_sec');
     setInitialized(true);
   }
 
   const currentSets = matchSets ?? 5;
   const currentPoints = pointsToWin ?? 25;
   const currentVolleyType = volleyType ?? "classic";
+  const currentScoringRule = scoringRule ?? 'point_sec';
 
   const volleyTypeLabel = (v: string) => {
     switch (v) {
@@ -64,7 +67,8 @@ export function EditMatchSettingsScreen({ route, navigation }: Props) {
   const hasChanges =
     matchSets !== match.matchSets ||
     pointsToWin !== match.pointsToWin ||
-    volleyType !== (match as any).volleyType;
+    volleyType !== (match as any).volleyType ||
+    scoringRule !== (match.scoringRule ?? 'point_sec');
 
   const handleSave = async () => {
     try {
@@ -73,6 +77,7 @@ export function EditMatchSettingsScreen({ route, navigation }: Props) {
         ...(matchSets !== match.matchSets ? { matchSets } : {}),
         ...(pointsToWin !== match.pointsToWin ? { pointsToWin } : {}),
         ...(volleyType !== (match as any).volleyType ? { volleyType } : {}),
+        ...(scoringRule !== (match.scoringRule ?? 'point_sec') ? { scoringRule } : {}),
       } as any);
       Alert.alert("", t("match.manageSaved"));
       navigation.goBack();
@@ -130,6 +135,22 @@ export function EditMatchSettingsScreen({ route, navigation }: Props) {
           >
             <Text style={[styles.chipText, currentPoints === p && styles.chipTextActive]}>
               {String(p)} pts
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Scoring rule */}
+      <Text style={styles.sectionTitle}>{t("match.scoringRule")}</Text>
+      <View style={styles.chipRow}>
+        {(["point_sec", "two_point_gap"] as const).map((rule) => (
+          <TouchableOpacity
+            key={rule}
+            style={[styles.chip, currentScoringRule === rule && styles.chipActive]}
+            onPress={() => setScoringRule(rule)}
+          >
+            <Text style={[styles.chipText, currentScoringRule === rule && styles.chipTextActive]}>
+              {t(rule === "point_sec" ? "match.scoringRulePointSec" : "match.scoringRuleTwoPointGap")}
             </Text>
           </TouchableOpacity>
         ))}

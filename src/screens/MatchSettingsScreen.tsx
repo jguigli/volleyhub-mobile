@@ -15,7 +15,6 @@ import {
   useDeleteMatch,
   useManageMatch,
   useMatch,
-  useRenewMatch,
 } from '../hooks/useMatches';
 import { useAuthStore } from '../store/auth.store';
 import { useTranslation } from '../i18n';
@@ -31,7 +30,6 @@ export function MatchSettingsScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const { data: match, isLoading, error } = useMatch(matchId);
-  const renewMut = useRenewMatch();
   const deleteMut = useDeleteMatch();
   const manageMut = useManageMatch();
 
@@ -53,35 +51,6 @@ export function MatchSettingsScreen({ route, navigation }: Props) {
 
   const isCreator = user?.id === match.creatorId;
   const cancelled = match.status === 'cancelled';
-  const canRenew = !cancelled;
-
-  const handleRenew = () => {
-    if (!canRenew) {
-      return;
-    }
-    Alert.alert(
-      t('match.renewMatchConfirmTitle'),
-      t('match.renewMatchConfirmMessage'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('match.renewMatchConfirmAction'),
-          onPress: async () => {
-            try {
-              const m = await renewMut.mutateAsync(matchId);
-              navigation.pop();
-              navigation.replace('MatchDetail', { matchId: m.id });
-            } catch (e: unknown) {
-              const msg =
-                e instanceof Error ? e.message : t('match.renewMatchFailed');
-              Alert.alert(t('common.error'), msg);
-            }
-          },
-        },
-      ],
-    );
-  };
-
   const handleDelete = () => {
     Alert.alert(t('match.deleteEventTitle'), t('match.deleteEventMessage'), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -226,39 +195,6 @@ export function MatchSettingsScreen({ route, navigation }: Props) {
               )}
             </TouchableOpacity>
           ) : null}
-
-          <TouchableOpacity
-            style={[styles.card, !canRenew && styles.cardDisabled]}
-            onPress={handleRenew}
-            disabled={!canRenew || renewMut.isPending}
-            activeOpacity={0.75}
-          >
-            <View style={styles.cardIconWrap}>
-              <Ionicons
-                name="refresh-outline"
-                size={24}
-                color={canRenew ? colors.primary : colors.textMuted}
-              />
-            </View>
-            <View style={styles.cardTextWrap}>
-              <Text style={styles.cardTitle}>
-                {tournament ? t('match.renewTournamentSectionTitle') : t('match.renewMatchSectionTitle')}
-              </Text>
-              <Text style={styles.cardSubtitle}>
-                {tournament
-                  ? t('match.renewMatchSectionSubtitleTournament')
-                  : t('match.renewMatchSectionSubtitle')}
-              </Text>
-              {!canRenew ? (
-                <Text style={styles.cardHint}>{t('match.renewMatchDisabledHint')}</Text>
-              ) : null}
-            </View>
-            {renewMut.isPending ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : (
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-            )}
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.card, styles.cardDanger]}

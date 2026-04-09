@@ -89,6 +89,7 @@ export const matchesApi = {
     teamSize?: number;
     matchSets?: number;
     pointsToWin?: number;
+    scoringRule?: 'point_sec' | 'two_point_gap';
     tournamentPointsPerMatch?: number;
     tournamentCourtCount?: number;
     tournamentSystem?: TournamentSystem;

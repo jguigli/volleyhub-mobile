@@ -102,7 +102,7 @@ function FormatAccordion({
   t,
   inline,
 }: {
-  match: { teamCount?: number | null; teamSize?: number | null; tournamentPointsPerMatch?: number | null; tournamentCourtCount?: number | null; matchSets?: number | null; pointsToWin?: number | null };
+  match: { teamCount?: number | null; teamSize?: number | null; tournamentPointsPerMatch?: number | null; tournamentCourtCount?: number | null; matchSets?: number | null; pointsToWin?: number | null; scoringRule?: string | null };
   tournament: boolean;
   volleyLabel: string;
   tournamentSystemLabel: string | null;
@@ -201,6 +201,11 @@ function FormatAccordion({
                   value={`${String(match.pointsToWin)} pts`}
                 />
               ) : null}
+              <FormatLine
+                icon={<Ionicons name="flag-outline" size={15} color={colors.primary} />}
+                label={t('match.scoringRule')}
+                value={match.scoringRule === 'two_point_gap' ? t('match.scoringRuleTwoPointGap') : t('match.scoringRulePointSec')}
+              />
             </>
           )}
         </View>

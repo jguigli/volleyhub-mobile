@@ -126,13 +126,21 @@ export function SettingsScreen() {
           <Text style={styles.settingsValue}>{mapAppearanceDisplay}</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
-        <TouchableOpacity style={styles.settingsItem} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.settingsItem}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('NotificationSettings')}
+        >
           <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
           <Text style={styles.settingsLabel}>{t('settings.notifications')}</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </TouchableOpacity>
         <View style={styles.divider} />
-        <TouchableOpacity style={styles.settingsItem} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.settingsItem}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('Help')}
+        >
           <Ionicons name="help-circle-outline" size={20} color={colors.textSecondary} />
           <Text style={styles.settingsLabel}>{t('settings.help')}</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />

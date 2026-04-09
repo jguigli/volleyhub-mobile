@@ -78,6 +78,8 @@ export type ProfileStackParamList = {
   Profile: undefined;
   Connections: { userId: string };
   Settings: undefined;
+  NotificationSettings: undefined;
+  Help: undefined;
   EditProfile: undefined;
   MatchDetail: { matchId: string };
   MatchSettings: { matchId: string };
@@ -101,8 +103,14 @@ export type ProfileStackParamList = {
 export type NotificationsStackParamList = {
   Notifications: undefined;
   MatchDetail: { matchId: string };
+  MatchSettings: { matchId: string };
+  EditMatchSettings: { matchId: string };
+  EventGuide: { matchId: string };
+  MatchTeamsBoard: { matchId: string };
+  TeamsGuide: { tournament: boolean };
   EventScore: { matchId: string };
   TournamentCourts: { matchId: string };
+  MatchChat: { matchId: string };
   UserProfile: { userId: string };
   Connections: { userId: string };
 };

@@ -304,6 +304,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
   const [maxPlayers, setMaxPlayers] = useState(12);
   const [matchSets, setMatchSets] = useState<number>(5);
   const [pointsToWin, setPointsToWin] = useState<number>(25);
+  const [scoringRule, setScoringRule] = useState<'point_sec' | 'two_point_gap'>('point_sec');
   const [eventMode, setEventMode] = useState<'match' | 'tournament'>('match');
   const [teamCount, setTeamCount] = useState(8);
   const [teamSize, setTeamSize] = useState(4);
@@ -467,6 +468,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
               description: mergedDescription || undefined,
               matchSets,
               pointsToWin,
+              scoringRule,
             });
 
       Alert.alert(
@@ -888,6 +890,25 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                       ]}
                     >
                       {n} pts
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.subsectionLabel}>{t('match.scoringRule')}</Text>
+              <View style={styles.chips}>
+                {(['point_sec', 'two_point_gap'] as const).map((rule) => (
+                  <TouchableOpacity
+                    key={rule}
+                    style={[styles.chipWide, scoringRule === rule && styles.chipSelected]}
+                    onPress={() => setScoringRule(rule)}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        scoringRule === rule && styles.chipTextSelected,
+                      ]}
+                    >
+                      {t(rule === 'point_sec' ? 'match.scoringRulePointSec' : 'match.scoringRuleTwoPointGap')}
                     </Text>
                   </TouchableOpacity>
                 ))}

@@ -58,7 +58,14 @@ export function MatchBottomSheet({
     return () => loop.stop();
   }, [pulseTeamsBtn, teamsBorderPulse]);
 
-  const translateY = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(500)).current;
+  useEffect(() => {
+    Animated.spring(translateY, {
+      toValue: 0,
+      useNativeDriver: true,
+      overshootClamping: true,
+    }).start();
+  }, [translateY]);
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,

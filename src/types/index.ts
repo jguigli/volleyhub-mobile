@@ -162,6 +162,7 @@ export interface Match {
   teamSize?: number | null;
   matchSets?: number | null;
   pointsToWin?: number | null;
+  scoringRule?: 'point_sec' | 'two_point_gap' | null;
   tournamentPointsPerMatch?: number | null;
   tournamentCourtCount?: number | null;
   tournamentSystem?: TournamentSystem | null;
@@ -189,6 +190,7 @@ export interface NearbyMatch {
   event_format?: EventFormat;
   match_sets?: number | null;
   points_to_win?: number | null;
+  scoring_rule?: 'point_sec' | 'two_point_gap' | null;
   tournament_points_per_match?: number | null;
   status: MatchStatus;
   description: string | null;
