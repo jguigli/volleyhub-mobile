@@ -105,6 +105,13 @@ export function LoginScreen({ navigation }: Props) {
           </TouchableOpacity>
 
           <TouchableOpacity
+            onPress={() => navigation.navigate('ForgotPassword')}
+            style={styles.forgotLink}
+          >
+            <Text style={styles.linkBold}>{t('auth.forgotPassword')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             onPress={() => navigation.navigate('Register')}
             style={styles.link}
           >
@@ -187,6 +194,10 @@ const styles = StyleSheet.create({
     ...typography.button,
     color: colors.white,
     fontSize: 16,
+  },
+  forgotLink: {
+    alignItems: 'center',
+    marginTop: spacing.md,
   },
   link: {
     alignItems: 'center',

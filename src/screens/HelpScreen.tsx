@@ -39,13 +39,13 @@ export function HelpScreen() {
         <Text style={styles.sectionTitle}>{t('settings.helpContactTitle')}</Text>
         <TouchableOpacity
           style={styles.contactCard}
-          onPress={() => Linking.openURL('mailto:support@volleyhub.app')}
+          onPress={() => Linking.openURL('mailto:contact@volleyhub.io')}
           activeOpacity={0.7}
         >
           <Ionicons name="mail-outline" size={20} color={colors.primary} />
           <View style={styles.contactText}>
             <Text style={styles.contactLabel}>{t('settings.helpEmail')}</Text>
-            <Text style={styles.contactValue}>support@volleyhub.app</Text>
+            <Text style={styles.contactValue}>contact@volleyhub.io</Text>
           </View>
           <Ionicons name="open-outline" size={16} color={colors.textMuted} />
         </TouchableOpacity>

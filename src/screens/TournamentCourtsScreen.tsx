@@ -21,6 +21,7 @@ import {
 } from '../navigation/types';
 import {
   useConfirmFixtureScore,
+  useManageMatch,
   useMatch,
   useOverrideFixtureScore,
   useSubmitFixtureScore,
@@ -77,6 +78,7 @@ export function TournamentCourtsScreen({ route, navigation }: Props) {
   const submitMut = useSubmitFixtureScore();
   const confirmMut = useConfirmFixtureScore();
   const overrideMut = useOverrideFixtureScore();
+  const manageMut = useManageMatch();
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -86,17 +88,7 @@ export function TournamentCourtsScreen({ route, navigation }: Props) {
           hitSlop={10}
           style={{ padding: 8, marginRight: 4 }}
         >
-          <View style={{
-            width: 26,
-            height: 26,
-            borderRadius: 13,
-            borderWidth: 1.5,
-            borderColor: colors.textMuted,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <Text style={{ fontSize: 13, fontWeight: '800', color: colors.textSecondary }}>i</Text>
-          </View>
+          <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
         </Pressable>
       ),
     });
@@ -212,12 +204,64 @@ export function TournamentCourtsScreen({ route, navigation }: Props) {
           <Text style={styles.emptyText}>{t('match.tournamentNotStartedYet')}</Text>
           <Text style={styles.emptySubtext}>{t('match.tournamentNotStartedHint')}</Text>
         </View>
-      ) : games.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <MaterialCommunityIcons name="volleyball" size={32} color={colors.textMuted} />
-          <Text style={styles.emptyText}>{t('match.tournamentCourtsEmpty')}</Text>
-        </View>
-      ) : (
+      ) : games.length === 0 ? (() => {
+        // Compute team fill status
+        const teamSz = match.teamSize ?? 1;
+        const tCount = match.teamCount ?? 0;
+        const teamCounts: number[] = Array.from({ length: tCount }, () => 0);
+        for (const p of match.participants) {
+          if (p.teamIndex != null && p.teamIndex >= 0 && p.teamIndex < tCount) {
+            teamCounts[p.teamIndex]++;
+          }
+        }
+        const emptyTeams = teamCounts.filter((c) => c === 0).length;
+        const incompleteTeams = teamCounts.filter((c) => c > 0 && c < teamSz).length;
+        const hasWarning = emptyTeams > 0 || incompleteTeams > 0;
+
+        return (
+          <View style={styles.emptyCard}>
+            <Ionicons name="rocket-outline" size={32} color={isCreator ? colors.primary : colors.textMuted} />
+            <Text style={styles.emptyText}>
+              {isCreator ? t('match.tournamentReadyToLaunch') : t('match.tournamentWaitingForLaunch')}
+            </Text>
+            {isCreator && hasWarning ? (
+              <View style={styles.launchWarning}>
+                <Ionicons name="warning-outline" size={18} color={colors.warning} />
+                <Text style={styles.launchWarningText}>
+                  {emptyTeams > 0 && incompleteTeams > 0
+                    ? t('match.tournamentWarningBoth', { empty: String(emptyTeams), incomplete: String(incompleteTeams) })
+                    : emptyTeams > 0
+                      ? t('match.tournamentWarningEmpty', { n: String(emptyTeams) })
+                      : t('match.tournamentWarningIncomplete', { n: String(incompleteTeams) })}
+                </Text>
+              </View>
+            ) : null}
+            {isCreator ? (
+              <Pressable
+                style={[styles.launchBtn, manageMut.isPending && styles.btnDisabled]}
+                onPress={async () => {
+                  try {
+                    await manageMut.mutateAsync({ matchId, launchBracket: true } as any);
+                    refetch();
+                  } catch (e: unknown) {
+                    Alert.alert(t('common.error'), extractErrorMsg(e, t('match.loadFailed')));
+                  }
+                }}
+                disabled={manageMut.isPending}
+              >
+                {manageMut.isPending ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <>
+                    <Ionicons name="play" size={18} color={colors.white} />
+                    <Text style={styles.launchBtnText}>{t('match.launchTournament')}</Text>
+                  </>
+                )}
+              </Pressable>
+            ) : null}
+          </View>
+        );
+      })() : (
         <View style={styles.courtSections}>
           {Array.from({ length: courtCount }, (_, c) => {
             const live = games.find(
@@ -229,6 +273,7 @@ export function TournamentCourtsScreen({ route, navigation }: Props) {
                 courtIndex={c}
                 liveGame={live}
                 teamCount={teamCount}
+                targetPts={targetPts}
                 myTeamIndex={myTeamIndex}
                 isCreator={isCreator}
                 matchId={matchId}
@@ -292,6 +337,7 @@ function CourtCard({
   courtIndex,
   liveGame,
   teamCount,
+  targetPts,
   myTeamIndex,
   isCreator,
   matchId,
@@ -304,6 +350,7 @@ function CourtCard({
   courtIndex: number;
   liveGame: TournamentGame | undefined;
   teamCount: number;
+  targetPts: number;
   myTeamIndex: number | null;
   isCreator: boolean;
   matchId: string;
@@ -321,6 +368,7 @@ function CourtCard({
   // Override scores for creator editing other teams
   const [ovA, setOvA] = useState('');
   const [ovB, setOvB] = useState('');
+  const [editingSide, setEditingSide] = useState<'A' | 'B' | null>(null);
 
   useEffect(() => {
     if (!liveGame || !side) {
@@ -328,13 +376,13 @@ function CourtCard({
       return;
     }
     const v = side === 'A' ? liveGame.scoreA : liveGame.scoreB;
-    setDraftScore(String(v));
+    setDraftScore(v > 0 ? String(v) : '');
   }, [liveGame?.fixtureId, liveGame?.scoreA, liveGame?.scoreB, side]);
 
   useEffect(() => {
     if (liveGame) {
-      setOvA(String(liveGame.scoreA));
-      setOvB(String(liveGame.scoreB));
+      setOvA(liveGame.scoreA > 0 ? String(liveGame.scoreA) : '');
+      setOvB(liveGame.scoreB > 0 ? String(liveGame.scoreB) : '');
     } else {
       setOvA('');
       setOvB('');
@@ -353,7 +401,6 @@ function CourtCard({
     liveGame &&
     hasFixtures &&
     liveGame.fixtureId &&
-    !bothLocked &&
     liveGame.status === 'live';
 
   const onSubmitMyScore = async () => {
@@ -381,6 +428,13 @@ function CourtCard({
       Alert.alert(t('common.error'), t('match.invalidScore'));
       return;
     }
+    // Check for tie before confirming
+    const otherScore = side === 'A' ? liveGame.scoreB : liveGame.scoreA;
+    const otherConfirmed = side === 'A' ? bConfirmed : aConfirmed;
+    if (otherConfirmed && n === otherScore) {
+      Alert.alert(t('common.error'), t('match.scoresCannotBeTied'));
+      return;
+    }
     try {
       await submitMut.mutateAsync({
         fixtureId: liveGame.fixtureId,
@@ -404,14 +458,19 @@ function CourtCard({
     );
   };
 
-  const onOverride = async () => {
+  const onOverrideSide = async (overrideSide: 'A' | 'B') => {
     if (!liveGame?.fixtureId) return;
-    const sa = parseInt(ovA.replace(/\D/g, ''), 10);
-    const sb = parseInt(ovB.replace(/\D/g, ''), 10);
-    if (Number.isNaN(sa) || Number.isNaN(sb) || sa < 0 || sb < 0) {
+    const val = overrideSide === 'A' ? ovA : ovB;
+    const n = parseInt(val.replace(/\D/g, ''), 10);
+    if (Number.isNaN(n) || n < 0) {
       Alert.alert(t('common.error'), t('match.invalidScore'));
       return;
     }
+    // Use local draft values for both sides to avoid resetting the other side
+    const localA = side === 'A' ? draftScore : ovA;
+    const localB = side === 'B' ? draftScore : ovB;
+    const sa = overrideSide === 'A' ? n : parseInt(localA.replace(/\D/g, ''), 10) || liveGame.scoreA;
+    const sb = overrideSide === 'B' ? n : parseInt(localB.replace(/\D/g, ''), 10) || liveGame.scoreB;
     try {
       await overrideMut.mutateAsync({
         fixtureId: liveGame.fixtureId,
@@ -419,9 +478,38 @@ function CourtCard({
         scoreA: sa,
         scoreB: sb,
       });
+      setEditingSide(null);
     } catch (e: unknown) {
       Alert.alert(t('common.error'), extractErrorMsg(e, t('match.loadFailed')));
     }
+  };
+
+  const onLockSide = (lockSide: 'A' | 'B') => {
+    if (!liveGame?.fixtureId) return;
+    // Check for tie before locking
+    const otherConfirmed = lockSide === 'A' ? bConfirmed : aConfirmed;
+    if (otherConfirmed && liveGame.scoreA === liveGame.scoreB) {
+      Alert.alert(t('common.error'), t('match.scoresCannotBeTied'));
+      return;
+    }
+    Alert.alert(
+      t('match.confirmLockTitle'),
+      t('match.confirmLockMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.confirm'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await confirmMut.mutateAsync({ fixtureId: liveGame.fixtureId!, matchId, side: lockSide });
+            } catch (e: unknown) {
+              Alert.alert(t('common.error'), extractErrorMsg(e, t('match.loadFailed')));
+            }
+          },
+        },
+      ],
+    );
   };
 
   const dimmed = !liveGame;
@@ -465,11 +553,16 @@ function CourtCard({
             confirmed={aConfirmed}
             isMySide={side === 'A'}
             isMyTeam={myTeamIndex != null && liveGame.teamAIndex === myTeamIndex}
-            canCreatorEdit={Boolean(canOverride) && !aConfirmed}
+            canCreatorEdit={Boolean(canOverride)}
             draftScore={side === 'A' ? draftScore : ovA}
             onDraftChange={side === 'A' ? setDraftScore : setOvA}
             busy={busy}
             isLast={false}
+            isEditing={editingSide === 'A'}
+            onEditPress={() => setEditingSide('A')}
+            onSavePress={() => onOverrideSide('A')}
+            onLockPress={Boolean(canOverride) && !aConfirmed ? () => onLockSide('A') : undefined}
+            targetPts={targetPts}
             t={t}
           />
 
@@ -480,11 +573,16 @@ function CourtCard({
             confirmed={bConfirmed}
             isMySide={side === 'B'}
             isMyTeam={myTeamIndex != null && liveGame.teamBIndex === myTeamIndex}
-            canCreatorEdit={Boolean(canOverride) && !bConfirmed}
+            canCreatorEdit={Boolean(canOverride)}
             draftScore={side === 'B' ? draftScore : ovB}
             onDraftChange={side === 'B' ? setDraftScore : setOvB}
             busy={busy}
-            isLast={!hasActions}
+            isLast={!showMyBtns && !bothLocked}
+            isEditing={editingSide === 'B'}
+            onEditPress={() => setEditingSide('B')}
+            onSavePress={() => onOverrideSide('B')}
+            onLockPress={Boolean(canOverride) && !bConfirmed ? () => onLockSide('B') : undefined}
+            targetPts={targetPts}
             t={t}
           />
 
@@ -494,29 +592,16 @@ function CourtCard({
               <Ionicons name="checkmark-circle" size={16} color={colors.success} />
               <Text style={styles.statusBannerText}>{t('match.bothTeamsConfirmed')}</Text>
             </View>
-          ) : hasActions ? (
+          ) : showMyBtns ? (
             <View style={styles.actionsRow}>
-              {canOverride ? (
-                <Pressable
-                  style={[styles.btnOverride, busy && styles.btnDisabled]}
-                  onPress={onOverride}
-                  disabled={busy}
-                >
-                  <Ionicons name="create-outline" size={15} color={colors.warning} />
-                  <Text style={styles.btnOverrideText}>{t('match.applyScores')}</Text>
-                </Pressable>
-              ) : null}
-
-              {showMyBtns ? (
-                <Pressable
-                  style={[styles.btnPrimary, busy && styles.btnDisabled]}
-                  onPress={onConfirmMySide}
-                  disabled={busy}
-                >
-                  <Ionicons name="lock-closed-outline" size={15} color="#fff" />
-                  <Text style={styles.btnPrimaryText}>{t('match.confirmScore')}</Text>
-                </Pressable>
-              ) : null}
+              <Pressable
+                style={[styles.btnPrimary, busy && styles.btnDisabled]}
+                onPress={onConfirmMySide}
+                disabled={busy}
+              >
+                <Ionicons name="lock-closed-outline" size={15} color="#fff" />
+                <Text style={styles.btnPrimaryText}>{t('match.confirmScore')}</Text>
+              </Pressable>
             </View>
           ) : null}
         </>
@@ -540,6 +625,11 @@ function TeamScoreRow({
   onDraftChange,
   busy,
   isLast,
+  isEditing,
+  onEditPress,
+  onSavePress,
+  onLockPress,
+  targetPts,
   t,
 }: {
   teamLabel: string;
@@ -552,9 +642,15 @@ function TeamScoreRow({
   onDraftChange: (v: string) => void;
   busy: boolean;
   isLast: boolean;
+  isEditing: boolean;
+  onEditPress?: () => void;
+  onSavePress?: () => void;
+  onLockPress?: () => void;
+  targetPts: number;
   t: ReturnType<typeof useTranslation>['t'];
 }) {
-  const canEdit = (isMySide && !confirmed) || canCreatorEdit;
+  const playerCanEdit = isMySide && !confirmed;
+  const creatorEditing = canCreatorEdit && isEditing;
 
   return (
     <View style={[styles.teamRow, confirmed && styles.teamRowLocked, isLast && styles.teamRowLast]}>
@@ -569,18 +665,60 @@ function TeamScoreRow({
         ) : null}
       </View>
 
-      {canEdit ? (
-        <TextInput
-          style={styles.scoreInput}
-          keyboardType="number-pad"
-          value={draftScore}
-          onChangeText={onDraftChange}
-          editable={!busy}
-          placeholder="0"
-          placeholderTextColor={colors.textMuted}
-        />
+      {playerCanEdit || creatorEditing ? (
+        <View style={styles.scoreEditRow}>
+          <TextInput
+            style={styles.scoreInput}
+            keyboardType="number-pad"
+            value={draftScore}
+            onChangeText={(v) => {
+              const digits = v.replace(/[^\d]/g, '');
+              if (digits === '') { onDraftChange(''); return; }
+              const n = Math.min(targetPts, parseInt(digits, 10) || 0);
+              onDraftChange(String(n));
+            }}
+            editable={!busy}
+            placeholder="_"
+            placeholderTextColor={colors.textMuted}
+          />
+          {creatorEditing && onSavePress ? (
+            <Pressable
+              style={[styles.btnSaveInline, busy && styles.btnDisabled]}
+              onPress={onSavePress}
+              disabled={busy}
+            >
+              <Ionicons name="checkmark" size={16} color={colors.white} />
+            </Pressable>
+          ) : null}
+        </View>
       ) : (
-        <Text style={styles.scoreDisplay}>{score}</Text>
+        <View style={styles.scoreReadRow}>
+          <Text style={[styles.scoreDisplay, !isMySide && !isMyTeam && styles.scoreDisplayDimmed]}>
+            {score}
+          </Text>
+          {canCreatorEdit ? (
+            <>
+              {onEditPress ? (
+                <Pressable
+                  style={styles.btnEditInline}
+                  onPress={onEditPress}
+                  disabled={busy}
+                >
+                  <Ionicons name="create-outline" size={16} color={colors.warning} />
+                </Pressable>
+              ) : null}
+              {onLockPress ? (
+                <Pressable
+                  style={styles.btnLockInline}
+                  onPress={onLockPress}
+                  disabled={busy}
+                >
+                  <Ionicons name="lock-closed-outline" size={14} color={colors.error} />
+                </Pressable>
+              ) : null}
+            </>
+          ) : null}
+        </View>
       )}
     </View>
   );
@@ -669,6 +807,39 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   emptyText: { ...typography.bodySmall, color: colors.textMuted, textAlign: 'center' },
+  launchWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.warning + '18',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.warning + '44',
+  },
+  launchWarningText: {
+    ...typography.bodySmall,
+    color: colors.warning,
+    flex: 1,
+    fontWeight: '600',
+  },
+  launchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.md,
+  },
+  launchBtnText: {
+    ...typography.button,
+    color: colors.white,
+    fontSize: 16,
+  },
   emptySubtext: { ...typography.bodySmall, color: colors.textSecondary, textAlign: 'center', fontSize: 13 },
 
   /* ── Court cards ── */
@@ -779,6 +950,19 @@ const styles = StyleSheet.create({
     minWidth: 36,
     textAlign: 'center',
   },
+  scoreDisplayDimmed: {
+    color: colors.textMuted,
+  },
+  scoreEditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  scoreReadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   scoreInput: {
     width: 56,
     borderWidth: 1,
@@ -786,12 +970,36 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
-    color: colors.text,
+    color: colors.white,
     backgroundColor: colors.surface,
     fontSize: 18,
     fontWeight: '800',
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
+  },
+  btnEditInline: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.warning + '22',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnSaveInline: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnLockInline: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.error + '22',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   /* ── Actions ── */

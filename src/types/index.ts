@@ -14,7 +14,8 @@ export type NotificationType =
   | 'connection_accepted'
   | 'player_left_event'
   | 'event_reminder_30min'
-  | 'chat_message';
+  | 'chat_message'
+  | 'event_cancelled_not_enough_players';
 
 export interface GeneralNotification {
   id: string;
@@ -191,6 +192,8 @@ export interface NearbyMatch {
   match_sets?: number | null;
   points_to_win?: number | null;
   scoring_rule?: 'point_sec' | 'two_point_gap' | null;
+  set_scores?: { teamA: number; teamB: number }[] | null;
+  tournament_games?: any[] | null;
   tournament_points_per_match?: number | null;
   status: MatchStatus;
   description: string | null;

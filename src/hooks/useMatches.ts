@@ -182,8 +182,8 @@ export function useConfirmFixtureScore() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (args: { fixtureId: string; matchId: string }) =>
-      matchesApi.confirmFixtureScore(args.fixtureId),
+    mutationFn: (args: { fixtureId: string; matchId: string; side?: 'A' | 'B' }) =>
+      matchesApi.confirmFixtureScore(args.fixtureId, args.side),
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: [MATCHES_KEY, vars.matchId] });
       queryClient.invalidateQueries({ queryKey: [MATCHES_KEY] });

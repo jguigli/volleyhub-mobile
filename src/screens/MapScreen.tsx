@@ -108,6 +108,8 @@ export function MapScreen({ navigation, route }: Props) {
       { lat: number; lng: number; count: number; matches: (typeof matchMarkers)[number][] }
     >();
     for (const m of matchMarkers) {
+      // Exclude selected match from clusters — it's rendered individually
+      if (selectedMatch && m.id === selectedMatch.id) continue;
       const r = Math.floor(m.marker_lat / clusterCellSize);
       const c = Math.floor(m.marker_lng / clusterCellSize);
       const k = `${r}:${c}`;
@@ -122,7 +124,7 @@ export function MapScreen({ navigation, route }: Props) {
       }
     }
     return Array.from(buckets.values());
-  }, [clusterCellSize, matchMarkers, shouldCluster]);
+  }, [clusterCellSize, matchMarkers, shouldCluster, selectedMatch]);
 
   const recenterMap = useCallback(() => {
     mapRef.current?.animateToRegion(
@@ -235,6 +237,32 @@ export function MapScreen({ navigation, route }: Props) {
             );
           })}
 
+        {/* Always render selected match individually, even when clustered */}
+        {shouldCluster && selectedMatch && matchMarkers.find((m) => m.id === selectedMatch.id) && (() => {
+          const match = matchMarkers.find((m) => m.id === selectedMatch.id)!;
+          const isFull = match.status === 'full';
+          return (
+            <Marker
+              key={`selected-${match.id}`}
+              coordinate={{ latitude: match.marker_lat, longitude: match.marker_lng }}
+              onPress={(e) => { e.stopPropagation(); setSelectedMatch(match); }}
+            >
+              <View
+                style={[
+                  styles.matchMarker,
+                  { backgroundColor: matchMarkerBackground(match, isFull) },
+                  styles.matchMarkerSelected,
+                ]}
+              >
+                <MaterialCommunityIcons name="volleyball" size={12} color={colors.white} />
+                <Text style={styles.matchMarkerText}>
+                  {match.current_players}/{match.max_players}
+                </Text>
+              </View>
+            </Marker>
+          );
+        })()}
+
         {shouldCluster &&
           clustered.map((group, idx) =>
             group.count === 1 ? (
@@ -340,15 +368,12 @@ export function MapScreen({ navigation, route }: Props) {
           onClose={() => setSelectedMatch(null)}
           onTeamsPress={() => {
             navigation.navigate('MatchTeamsBoard', { matchId: selectedMatch.id });
-            setSelectedMatch(null);
           }}
           onScorePress={() => {
             navigation.navigate('EventScore', { matchId: selectedMatch.id });
-            setSelectedMatch(null);
           }}
           onCourtsPress={() => {
             navigation.navigate('TournamentCourts', { matchId: selectedMatch.id });
-            setSelectedMatch(null);
           }}
           onViewMatch={() => {
             navigation.navigate('MatchDetail', { matchId: selectedMatch.id });

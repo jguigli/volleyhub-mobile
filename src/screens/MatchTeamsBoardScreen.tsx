@@ -109,129 +109,32 @@ export function MatchTeamsBoardScreen({ route, navigation }: Props) {
     });
   }, [navigation, match]);
 
-  const [teamByUser, setTeamByUser] = useState<Record<string, number | null>>({});
-
-  const participantTeamSig = useMemo(() => {
-    if (!match) {
-      return '';
-    }
-    const prefix = isTournamentMatch(match) ? 't' : 'm';
-    return (
-      prefix +
-      [...match.participants]
-        .map((p) => `${p.userId}:${p.teamIndex ?? 'x'}`)
-        .sort()
-        .join('|')
-    );
-  }, [match]);
-
-  useEffect(() => {
-    if (!match) {
-      return;
-    }
-    const next: Record<string, number | null> = {};
-    if (isTournamentMatch(match)) {
-      const n = match.teamCount ?? 0;
-      for (const p of match.participants) {
-        const ti = p.teamIndex;
-        next[p.userId] =
-          ti !== null &&
-          ti !== undefined &&
-          Number.isInteger(ti) &&
-          ti >= 0 &&
-          ti < n
-            ? ti
-            : null;
-      }
-    } else {
-      for (const p of match.participants) {
-        next[p.userId] =
-          p.teamIndex === 0 || p.teamIndex === 1 ? p.teamIndex : null;
-      }
-    }
-    setTeamByUser(next);
-  }, [matchId, participantTeamSig, match]);
-
   const isLive = Boolean(
     match &&
       match.status !== 'completed' &&
       match.status !== 'cancelled' &&
       Date.now() >= new Date(match.scheduledAt).getTime(),
   );
-  const teamsLocked =
-    match?.status === 'completed' || isLive;
+  const isTournament = match ? isTournamentMatch(match) : false;
+  const bracketLaunched = isTournament &&
+    match?.tournamentGames != null &&
+    match.tournamentGames.length > 0;
+  const teamsLocked = match?.status === 'completed' ||
+    (isTournament ? bracketLaunched : isLive);
+  const isOrganizer = Boolean(user && match && user.id === match.creatorId);
 
-  const canManageTeams = Boolean(
-    match &&
-      user &&
-      user.id === match.creatorId &&
-      !isTournamentMatch(match) &&
-      match.status !== 'completed' &&
-      !isLive,
-  );
-
-  const canManageTournamentTeams = Boolean(
-    match &&
-      user &&
-      user.id === match.creatorId &&
-      isTournamentMatch(match) &&
-      match.status !== 'completed' &&
-      !isLive,
-  );
-
-  const setOrganizerTeam = useCallback((uid: string, idx: number | null) => {
-    setTeamByUser((prev) => ({ ...prev, [uid]: idx }));
-  }, []);
-
-  const handleOrganizerSave = useCallback(async () => {
-    if (!match || isTournamentMatch(match)) {
-      return;
-    }
-    if (!user || user.id !== match.creatorId) {
-      Alert.alert(t('common.error'), t('match.manageUnauthorized'));
-      return;
-    }
-    const teamAssignments: Record<string, number | null> = {};
-    for (const p of match.participants) {
-      const v = teamByUser[p.userId] ?? null;
-      teamAssignments[p.userId] =
-        v === 0 || v === 1 ? v : null;
-    }
+  const kickFromTeam = useCallback(async (targetUserId: string) => {
+    if (!match || teamsLocked) return;
     try {
       await manageMut.mutateAsync({
         matchId: match.id,
-        teamAssignments,
+        teamAssignments: { [targetUserId]: null },
       });
-      Alert.alert('', t('match.manageSaved'));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : t('match.manageFailed');
       Alert.alert(t('common.error'), msg);
     }
-  }, [manageMut, match, t, teamByUser, user]);
-
-  const handleOrganizerSaveTournament = useCallback(async () => {
-    if (!match || !isTournamentMatch(match)) {
-      return;
-    }
-    if (!user || user.id !== match.creatorId) {
-      Alert.alert(t('common.error'), t('match.manageUnauthorized'));
-      return;
-    }
-    const teamAssignments: Record<string, number | null> = {};
-    for (const p of match.participants) {
-      teamAssignments[p.userId] = teamByUser[p.userId] ?? null;
-    }
-    try {
-      await manageMut.mutateAsync({
-        matchId: match.id,
-        teamAssignments,
-      });
-      Alert.alert('', t('match.manageSaved'));
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : t('match.manageFailed');
-      Alert.alert(t('common.error'), msg);
-    }
-  }, [manageMut, match, t, teamByUser, user]);
+  }, [manageMut, match, t, teamsLocked]);
 
   const unassignSelfFromTeam = useCallback(async () => {
     if (!user || teamsLocked) return;
@@ -259,7 +162,38 @@ export function MatchTeamsBoardScreen({ route, navigation }: Props) {
     );
   }
 
+  const cancelledNoPlayers =
+    match.status === 'completed' &&
+    !isTournamentMatch(match) &&
+    (!match.setScores || match.setScores.length === 0);
+
+  if (cancelledNoPlayers) {
+    return (
+      <View style={styles.centered}>
+        <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+        <Text style={styles.cancelledTitle}>{t('match.notEnoughPlayers')}</Text>
+        <Text style={styles.cancelledSubtitle}>{t('match.cancelledNotEnoughDesc')}</Text>
+      </View>
+    );
+  }
+
   if (isTournamentMatch(match)) {
+    const hasPlayedGames = match.tournamentGames?.some(
+      (g: any) => g.status === 'finished' && (g.scoreA > 0 || g.scoreB > 0),
+    );
+    const tournamentCancelledNoPlayers =
+      match.status === 'completed' && !hasPlayedGames;
+
+    if (tournamentCancelledNoPlayers) {
+      return (
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+          <Text style={styles.cancelledTitle}>{t('match.notEnoughPlayers')}</Text>
+          <Text style={styles.cancelledSubtitle}>{t('match.tournamentNotEnoughTeams')}</Text>
+        </View>
+      );
+    }
+
     const n = match.teamCount ?? 0;
     const size = match.teamSize ?? 0;
     const teamOptions: { idx: number | null; label: string }[] = [
@@ -359,6 +293,7 @@ export function MatchTeamsBoardScreen({ route, navigation }: Props) {
           </View>
         </>
       );
+      const showKick = !isMe && isOrganizer && !teamsLocked;
       return (
         <View key={slot.userId} style={styles.slotFilled}>
           {body}
@@ -368,6 +303,15 @@ export function MatchTeamsBoardScreen({ route, navigation }: Props) {
               onPress={unassignSelfFromTeam}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               disabled={setTeamMut.isPending}
+            >
+              <Ionicons name="close" size={16} color={colors.error} />
+            </Pressable>
+          ) : showKick ? (
+            <Pressable
+              style={styles.slotRemoveBtn}
+              onPress={() => kickFromTeam(slot.userId)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              disabled={manageMut.isPending}
             >
               <Ionicons name="close" size={16} color={colors.error} />
             </Pressable>
@@ -451,7 +395,7 @@ export function MatchTeamsBoardScreen({ route, navigation }: Props) {
           </View>
         ))}
 
-        {canManageTournamentTeams && benchPlayers.length > 0 ? (
+        {benchPlayers.length > 0 ? (
           <View style={styles.bench}>
             <Text style={styles.benchTitle}>{t('match.playersUnassigned')}</Text>
             {benchPlayers.map((p) => (
@@ -484,17 +428,6 @@ export function MatchTeamsBoardScreen({ route, navigation }: Props) {
           </View>
         ) : null}
 
-        {canManageTournamentTeams && match.participants.length > 0 ? (
-          <TournamentOrganizerSection
-            participants={match.participants}
-            teamCount={n}
-            teamByUser={teamByUser}
-            setOrganizerTeam={setOrganizerTeam}
-            onSave={handleOrganizerSaveTournament}
-            saving={manageMut.isPending}
-            t={t}
-          />
-        ) : null}
       </ScrollView>
     );
   }
@@ -576,6 +509,7 @@ export function MatchTeamsBoardScreen({ route, navigation }: Props) {
           </View>
         </>
       );
+      const showKick = !isMe && isOrganizer && !teamsLocked;
       return (
         <View key={key} style={styles.slotFilled}>
           {body}
@@ -585,6 +519,15 @@ export function MatchTeamsBoardScreen({ route, navigation }: Props) {
               onPress={unassignSelfFromTeam}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               disabled={setTeamMut.isPending}
+            >
+              <Ionicons name="close" size={16} color={colors.error} />
+            </Pressable>
+          ) : showKick ? (
+            <Pressable
+              style={styles.slotRemoveBtn}
+              onPress={() => kickFromTeam(slot.userId)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              disabled={manageMut.isPending}
             >
               <Ionicons name="close" size={16} color={colors.error} />
             </Pressable>
@@ -683,328 +626,9 @@ export function MatchTeamsBoardScreen({ route, navigation }: Props) {
         </View>
       ) : null}
 
-      {canManageTeams && match.participants.length > 0 ? (
-        <View style={styles.organizerSection}>
-          <Text style={styles.organizerTitle}>{t('match.assignTeamsHint')}</Text>
-          {match.participants.map((p) => {
-            const cur = teamByUser[p.userId] ?? null;
-            return (
-              <View key={p.userId} style={styles.organizerRow}>
-                <Text style={styles.organizerName} numberOfLines={1}>
-                  {p.user.username}
-                </Text>
-                <View style={styles.teamPick}>
-                  {(
-                    [
-                      { idx: null, label: t('match.teamNone') },
-                      { idx: 0, label: 'A' },
-                      { idx: 1, label: 'B' },
-                    ] as { idx: number | null; label: string }[]
-                  ).map(({ idx, label }) => (
-                    <TouchableOpacity
-                      key={String(idx)}
-                      style={[
-                        styles.teamChip,
-                        cur === idx && styles.teamChipSelected,
-                      ]}
-                      onPress={() => setOrganizerTeam(p.userId, idx)}
-                    >
-                      <Text
-                        style={[
-                          styles.teamChipText,
-                          cur === idx && styles.teamChipTextSelected,
-                        ]}
-                      >
-                        {label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            );
-          })}
-          <TouchableOpacity
-            style={[styles.organizerSaveBtn, manageMut.isPending && styles.btnDisabled]}
-            onPress={handleOrganizerSave}
-            disabled={manageMut.isPending}
-          >
-            {manageMut.isPending ? (
-              <ActivityIndicator color={colors.white} />
-            ) : (
-              <Text style={styles.organizerSaveText}>{t('match.saveManage')}</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      ) : null}
     </ScrollView>
   );
 }
-
-/* ──────────────────────────────────────────────
-   Organizer section with dropdown per player
-   ────────────────────────────────────────────── */
-
-function TournamentOrganizerSection({
-  participants,
-  teamCount,
-  teamByUser,
-  setOrganizerTeam,
-  onSave,
-  saving,
-  t,
-}: {
-  participants: MatchParticipant[];
-  teamCount: number;
-  teamByUser: Record<string, number | null>;
-  setOrganizerTeam: (uid: string, idx: number | null) => void;
-  onSave: () => void;
-  saving: boolean;
-  t: ReturnType<typeof useTranslation>['t'];
-}) {
-  const [openUid, setOpenUid] = useState<string | null>(null);
-
-  const teamOptions: { idx: number | null; label: string }[] = useMemo(
-    () => [
-      { idx: null, label: t('match.teamNone') },
-      ...Array.from({ length: teamCount }, (_, i) => ({
-        idx: i,
-        label: t('match.teamN', { n: String(i + 1) }),
-      })),
-    ],
-    [teamCount, t],
-  );
-
-  return (
-    <View style={orgStyles.section}>
-      <View style={orgStyles.header}>
-        <Ionicons name="people-outline" size={20} color={colors.primary} />
-        <Text style={orgStyles.title}>{t('match.assignTeamsTournamentHint')}</Text>
-      </View>
-
-      {participants.map((p) => {
-        const cur = teamByUser[p.userId] ?? null;
-        const curLabel =
-          cur !== null
-            ? t('match.teamN', { n: String(cur + 1) })
-            : t('match.teamNone');
-        const isOpen = openUid === p.userId;
-
-        return (
-          <View key={p.userId} style={orgStyles.playerCard}>
-            <Pressable
-              style={orgStyles.playerRow}
-              onPress={() => setOpenUid(isOpen ? null : p.userId)}
-            >
-              <View style={orgStyles.playerInfo}>
-                {p.user.profilePicture ? (
-                  <Image
-                    source={{ uri: p.user.profilePicture }}
-                    style={orgStyles.avatar}
-                  />
-                ) : (
-                  <View style={[orgStyles.avatar, orgStyles.avatarPh]}>
-                    <Text style={orgStyles.avatarInitial}>
-                      {p.user.username[0]?.toUpperCase() ?? '?'}
-                    </Text>
-                  </View>
-                )}
-                <Text style={orgStyles.playerName} numberOfLines={1}>
-                  {p.user.username}
-                </Text>
-              </View>
-              <View style={orgStyles.currentTeam}>
-                <Text
-                  style={[
-                    orgStyles.currentTeamText,
-                    cur !== null && orgStyles.currentTeamAssigned,
-                  ]}
-                >
-                  {curLabel}
-                </Text>
-                <Ionicons
-                  name={isOpen ? 'chevron-up' : 'chevron-down'}
-                  size={16}
-                  color={colors.textMuted}
-                />
-              </View>
-            </Pressable>
-
-            {isOpen ? (
-              <View style={orgStyles.dropdown}>
-                {teamOptions.map(({ idx, label }) => {
-                  const selected = cur === idx;
-                  return (
-                    <Pressable
-                      key={String(idx)}
-                      style={[
-                        orgStyles.dropdownItem,
-                        selected && orgStyles.dropdownItemSelected,
-                      ]}
-                      onPress={() => {
-                        setOrganizerTeam(p.userId, idx);
-                        setOpenUid(null);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          orgStyles.dropdownItemText,
-                          selected && orgStyles.dropdownItemTextSelected,
-                        ]}
-                      >
-                        {label}
-                      </Text>
-                      {selected ? (
-                        <Ionicons name="checkmark" size={16} color={colors.primary} />
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ) : null}
-          </View>
-        );
-      })}
-
-      <TouchableOpacity
-        style={[orgStyles.saveBtn, saving && styles.btnDisabled]}
-        onPress={onSave}
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator color={colors.white} />
-        ) : (
-          <Text style={orgStyles.saveBtnText}>{t('match.saveManage')}</Text>
-        )}
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-const orgStyles = StyleSheet.create({
-  section: {
-    marginTop: spacing.lg,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.text,
-    flex: 1,
-  },
-  playerCard: {
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    overflow: 'hidden',
-  },
-  playerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-  },
-  playerInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    minWidth: 0,
-  },
-  avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-  },
-  avatarPh: {
-    backgroundColor: colors.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  avatarInitial: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  playerName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text,
-    flex: 1,
-  },
-  currentTeam: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  currentTeamText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textMuted,
-  },
-  currentTeamAssigned: {
-    color: colors.primary,
-    fontWeight: '800',
-  },
-  dropdown: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  dropdownItemSelected: {
-    backgroundColor: colors.primary + '14',
-  },
-  dropdownItemText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  dropdownItemTextSelected: {
-    color: colors.primary,
-    fontWeight: '800',
-  },
-  saveBtn: {
-    marginTop: spacing.sm,
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  saveBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
-});
 
 const styles = StyleSheet.create({
   container: {
@@ -1019,6 +643,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.lg,
+  },
+  cancelledTitle: {
+    ...typography.h3,
+    color: colors.error,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
+  cancelledSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
   errorText: {
     ...typography.body,
@@ -1054,8 +691,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
   },
   colMine: {
-    borderColor: colors.primary + '66',
-    backgroundColor: colors.primary + '08',
+    borderColor: colors.primary,
+    borderWidth: 2,
   },
   colHead: {
     flexDirection: 'row',
@@ -1075,8 +712,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   colHeadMine: {
-    backgroundColor: colors.primary + '22',
-    borderBottomColor: colors.primary + '44',
+    backgroundColor: colors.surface,
+    borderBottomColor: colors.border,
   },
   colHeadText: {
     fontSize: 11,
@@ -1184,38 +821,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.45,
     marginBottom: spacing.xs,
   },
-  organizerSection: {
-    marginTop: spacing.lg,
-    paddingTop: spacing.lg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    gap: spacing.sm,
-    ...shadows.card,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  organizerTitle: {
-    ...typography.h3,
-    fontSize: 17,
-    marginBottom: spacing.xs,
-  },
-  organizerRow: {
-    marginTop: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  organizerName: {
-    ...typography.body,
-    fontWeight: '600',
-    flex: 1,
-    minWidth: 0,
-  },
-  teamPick: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tournamentGridCell: {
     width: '100%',
     marginBottom: spacing.sm,
@@ -1281,27 +886,5 @@ const styles = StyleSheet.create({
     minHeight: 52,
     opacity: 0.75,
   },
-  teamChip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: colors.surface,
-  },
-  teamChipSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '22',
-  },
-  teamChipText: { color: colors.textSecondary, fontWeight: '600' },
-  teamChipTextSelected: { color: colors.primary },
-  organizerSaveBtn: {
-    marginTop: spacing.md,
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  organizerSaveText: { ...typography.button, color: colors.white, fontSize: 16 },
   btnDisabled: { opacity: 0.6 },
 });

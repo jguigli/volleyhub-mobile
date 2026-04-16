@@ -138,9 +138,10 @@ export const matchesApi = {
     return res.data;
   },
 
-  confirmFixtureScore: async (fixtureId: string): Promise<TournamentFixture> => {
+  confirmFixtureScore: async (fixtureId: string, side?: 'A' | 'B'): Promise<TournamentFixture> => {
     const res = await apiClient.post<TournamentFixture>(
       `/matches/fixtures/${fixtureId}/confirm`,
+      side ? { side } : {},
     );
     return res.data;
   },

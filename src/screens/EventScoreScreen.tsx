@@ -90,7 +90,12 @@ export function EventScoreScreen({ route, navigation }: Props) {
     setInitialized(true);
   }, [match, initialized]);
 
-  const canManage = Boolean(match && currentUser?.id === match.creatorId);
+  const canManage = Boolean(
+    match &&
+      currentUser?.id === match.creatorId &&
+      match.status !== 'completed' &&
+      match.status !== 'cancelled',
+  );
   const tournament = match ? isTournamentMatch(match) : false;
   const scoringRule = match?.scoringRule ?? 'point_sec';
   const isTwoPointGap = scoringRule === 'two_point_gap';
@@ -350,41 +355,57 @@ export function EventScoreScreen({ route, navigation }: Props) {
     );
   }
 
+  const matchCancelledNoPlayers =
+    !tournament &&
+    match.status === 'completed' &&
+    (!match.setScores || match.setScores.length === 0);
+
+  if (matchCancelledNoPlayers) {
+    return (
+      <View style={styles.centered}>
+        <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+        <Text style={styles.cancelledTitle}>{t('match.notEnoughPlayers')}</Text>
+        <Text style={styles.cancelledSubtitle}>{t('match.cancelledNotEnoughDesc')}</Text>
+      </View>
+    );
+  }
+
   if (tournament) {
-    const noGames = !match.tournamentGames?.length;
+    const hasPlayedGames = match.tournamentGames?.some(
+      (g: any) => g.status === 'finished' && (g.scoreA > 0 || g.scoreB > 0),
+    );
     const isCompleted = match.status === 'completed';
+
+    if (!hasPlayedGames && isCompleted) {
+      return (
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+          <Text style={styles.cancelledTitle}>{t('match.notEnoughPlayers')}</Text>
+          <Text style={styles.cancelledSubtitle}>{t('match.tournamentNotEnoughTeams')}</Text>
+        </View>
+      );
+    }
 
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} />}>
-        {noGames && isCompleted ? (
-          <View style={styles.notEnoughTeamsCard}>
-            <Ionicons name="alert-circle-outline" size={32} color={colors.error} />
-            <Text style={styles.notEnoughTeamsText}>
-              {t('match.tournamentNotEnoughTeams')}
-            </Text>
-          </View>
-        ) : (
-          <>
-            <View style={styles.tourneyInfoCard}>
-              <View style={styles.tourneyInfoRow}>
-                <View style={styles.tourneyInfoItem}>
-                  <Ionicons name="grid-outline" size={16} color={colors.primary} />
-                  <Text style={styles.tourneyInfoValue}>
-                    {t('match.tournamentCourtsMeta', { n: String(courtCount) })}
-                  </Text>
-                </View>
-                <View style={styles.tourneyInfoSep} />
-                <View style={styles.tourneyInfoItem}>
-                  <Ionicons name="people-outline" size={16} color={colors.primary} />
-                  <Text style={styles.tourneyInfoValue}>
-                    {t('match.tournamentTeamCount', { n: String(match.teamCount ?? 0) })}
-                  </Text>
-                </View>
-              </View>
+        <View style={styles.tourneyInfoCard}>
+          <View style={styles.tourneyInfoRow}>
+            <View style={styles.tourneyInfoItem}>
+              <Ionicons name="grid-outline" size={16} color={colors.primary} />
+              <Text style={styles.tourneyInfoValue}>
+                {t('match.tournamentCourtsMeta', { n: String(courtCount) })}
+              </Text>
             </View>
-            <TournamentScoreRecap match={match} t={t} />
-          </>
-        )}
+            <View style={styles.tourneyInfoSep} />
+            <View style={styles.tourneyInfoItem}>
+              <Ionicons name="people-outline" size={16} color={colors.primary} />
+              <Text style={styles.tourneyInfoValue}>
+                {t('match.tournamentTeamCount', { n: String(match.teamCount ?? 0) })}
+              </Text>
+            </View>
+          </View>
+        </View>
+        <TournamentScoreRecap match={match} t={t} />
       </ScrollView>
     );
   }
@@ -496,7 +517,7 @@ export function EventScoreScreen({ route, navigation }: Props) {
         </View>
       ) : null}
 
-      {canManage && !tournament && match.status === 'completed' ? (
+      {currentUser?.id === match.creatorId && !tournament && match.status === 'completed' && match.setScores && match.setScores.length > 0 ? (
         <View style={styles.actions}>
           <TouchableOpacity
             style={[styles.renewBtn, renewMut.isPending && styles.btnDisabled]}
@@ -528,6 +549,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   errorText: { ...typography.body, color: colors.error },
+  cancelledTitle: {
+    ...typography.h3,
+    color: colors.error,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
+  cancelledSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
   setsSection: {
     marginHorizontal: spacing.md,
     gap: spacing.sm,
@@ -728,7 +762,7 @@ const styles = StyleSheet.create({
   columnHeaderBadgeText: {
     fontSize: 12,
     fontWeight: '800',
-    color: colors.primary,
+    color: colors.white,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
@@ -794,7 +828,7 @@ const styles = StyleSheet.create({
     width: 46,
     fontSize: 12,
     fontWeight: '800',
-    color: colors.primary,
+    color: colors.white,
     textTransform: 'uppercase',
   },
   totalSetsValue: {

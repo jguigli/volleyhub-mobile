@@ -124,7 +124,7 @@ export function MatchSettingsScreen({ route, navigation }: Props) {
         activeOpacity={0.75}
       >
         <View style={styles.cardIconWrap}>
-          <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
+          <Ionicons name="information-circle-outline" size={24} color={colors.white} />
         </View>
         <View style={styles.cardTextWrap}>
           <Text style={styles.cardTitle}>{t('match.eventGuideTitle')}</Text>
@@ -136,10 +136,6 @@ export function MatchSettingsScreen({ route, navigation }: Props) {
       {/* Sections organisateur uniquement */}
       {isCreator ? (
         <>
-          <Text style={styles.intro}>
-            {tournament ? t('match.tournamentSettingsIntro') : t('match.matchSettingsIntro')}
-          </Text>
-
           {canEditTournament ? (
             <TouchableOpacity
               style={styles.card}
@@ -147,7 +143,7 @@ export function MatchSettingsScreen({ route, navigation }: Props) {
               activeOpacity={0.75}
             >
               <View style={styles.cardIconWrap}>
-                <Ionicons name="options-outline" size={24} color={colors.primary} />
+                <Ionicons name="options-outline" size={24} color={colors.white} />
               </View>
               <View style={styles.cardTextWrap}>
                 <Text style={styles.cardTitle}>{t('match.editTournamentSettingsTitle')}</Text>
@@ -164,7 +160,7 @@ export function MatchSettingsScreen({ route, navigation }: Props) {
               activeOpacity={0.75}
             >
               <View style={styles.cardIconWrap}>
-                <Ionicons name="options-outline" size={24} color={colors.primary} />
+                <Ionicons name="options-outline" size={24} color={colors.white} />
               </View>
               <View style={styles.cardTextWrap}>
                 <Text style={styles.cardTitle}>{t('match.editMatchSettingsTitle')}</Text>
@@ -182,7 +178,7 @@ export function MatchSettingsScreen({ route, navigation }: Props) {
               activeOpacity={0.75}
             >
               <View style={styles.cardIconWrap}>
-                <Ionicons name="play-circle-outline" size={24} color={colors.success} />
+                <Ionicons name="play-circle-outline" size={24} color={colors.white} />
               </View>
               <View style={styles.cardTextWrap}>
                 <Text style={styles.cardTitle}>{t('match.startNowTitle')}</Text>
@@ -203,7 +199,7 @@ export function MatchSettingsScreen({ route, navigation }: Props) {
             activeOpacity={0.75}
           >
             <View style={[styles.cardIconWrap, styles.cardIconDanger]}>
-              <Ionicons name="trash-outline" size={24} color={colors.error} />
+              <Ionicons name="trash-outline" size={24} color={colors.white} />
             </View>
             <View style={styles.cardTextWrap}>
               <Text style={[styles.cardTitle, styles.cardTitleDanger]}>
@@ -270,12 +266,15 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.primary + '18',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  cardIconSuccess: {
+    backgroundColor: colors.success,
+  },
   cardIconDanger: {
-    backgroundColor: colors.error + '18',
+    backgroundColor: colors.error,
   },
   cardTextWrap: {
     flex: 1,

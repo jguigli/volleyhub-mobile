@@ -10,6 +10,7 @@ interface Props {
   maxPlayers: number;
   large?: boolean;
   matchStatus?: string;
+  cancelledNotEnough?: boolean;
   onPress?: () => void;
 }
 
@@ -19,6 +20,7 @@ export function PlayerCountBadge({
   maxPlayers,
   large = false,
   matchStatus,
+  cancelledNotEnough = false,
   onPress,
 }: Props) {
   const { t } = useTranslation();
@@ -52,6 +54,7 @@ export function PlayerCountBadge({
     barColor === colors.success ? colors.black : colors.white;
 
   if (large) {
+    const effectiveBarColor = cancelledNotEnough ? colors.error : barColor;
     const inner = (
       <>
         <View style={styles.largeHeader}>
@@ -59,21 +62,23 @@ export function PlayerCountBadge({
             {currentPlayers}
             <Text style={styles.largeMax}>/{maxPlayers}</Text>
           </Text>
-          <Text style={styles.spotsLabel}>
-            {spotsLeft <= 0 && matchStatus !== 'completed' && matchStatus !== 'cancelled'
-              ? t('match.full')
-              : spotsLeft <= 0
-                ? `${currentPlayers}/${maxPlayers}`
-                : spotsLeft === 1
-                  ? t('match.oneSpotLeft')
-                  : t('match.spotsLeft', { count: spotsLeft })}
+          <Text style={[styles.spotsLabel, cancelledNotEnough && { color: colors.error, fontWeight: '700' }]}>
+            {cancelledNotEnough
+              ? t('match.notEnoughPlayers')
+              : spotsLeft <= 0 && matchStatus !== 'completed' && matchStatus !== 'cancelled'
+                ? t('match.full')
+                : spotsLeft <= 0
+                  ? `${currentPlayers}/${maxPlayers}`
+                  : spotsLeft === 1
+                    ? t('match.oneSpotLeft')
+                    : t('match.spotsLeft', { count: spotsLeft })}
           </Text>
         </View>
         <View style={styles.progressBar}>
           <View
             style={[
               styles.progressFill,
-              { width: `${Math.min(fillPercent, 100)}%`, backgroundColor: barColor },
+              { width: cancelledNotEnough ? '100%' : `${Math.min(fillPercent, 100)}%`, backgroundColor: effectiveBarColor },
             ]}
           />
         </View>

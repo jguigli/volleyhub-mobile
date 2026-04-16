@@ -36,6 +36,13 @@ export const usersApi = {
     return res.data;
   },
 
+  searchUsers: async (query: string): Promise<PublicUser[]> => {
+    const res = await apiClient.get<PublicUser[]>('/users/search', {
+      params: { q: query },
+    });
+    return res.data;
+  },
+
   getFollowers: async (id: string): Promise<PublicUser[]> => {
     const res = await apiClient.get<PublicUser[]>(`/users/${id}/followers`);
     return res.data;

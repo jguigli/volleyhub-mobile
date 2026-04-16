@@ -65,6 +65,11 @@ export function MatchCard({
         ? t('createMatch.greenVolley')
         : t('createMatch.classicVolley');
   const venuePlace = matchCardVenuePlace(match);
+  const cancelledNotEnough = match.status === 'completed' && (
+    tournament
+      ? !match.tournament_games?.some((g: any) => g.status === 'finished' && (g.scoreA > 0 || g.scoreB > 0))
+      : (!match.set_scores || match.set_scores.length === 0)
+  );
   const now = Date.now();
   const startMs = scheduledDate.getTime();
   const timingBadge: 'upcoming' | 'live' | 'past' =
@@ -90,7 +95,9 @@ export function MatchCard({
   const isFull = match.status === 'full';
   const livePulse = useRef(new Animated.Value(1)).current;
   const teamsBorderPulse = useRef(new Animated.Value(0)).current;
+  const courtsBorderPulse = useRef(new Animated.Value(0)).current;
   const pulseTeamsBtn = timingBadge === 'upcoming' && !isFull;
+  const pulseCourtsBtn = tournament && timingBadge === 'live';
 
   useEffect(() => {
     if (timingBadge === 'live') {
@@ -122,6 +129,21 @@ export function MatchCard({
     loop.start();
     return () => { loop.stop(); teamsBorderPulse.setValue(0); };
   }, [teamsBorderPulse, pulseTeamsBtn]);
+
+  useEffect(() => {
+    if (!pulseCourtsBtn) {
+      courtsBorderPulse.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(courtsBorderPulse, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(courtsBorderPulse, { toValue: 0, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+      ]),
+    );
+    loop.start();
+    return () => { loop.stop(); courtsBorderPulse.setValue(0); };
+  }, [courtsBorderPulse, pulseCourtsBtn]);
 
   return (
     <TouchableOpacity
@@ -177,7 +199,7 @@ export function MatchCard({
               size={13}
               color={
                 timingBadge === 'upcoming'
-                  ? colors.primary
+                  ? colors.textSecondary
                   : timingBadge === 'live'
                     ? colors.success
                     : colors.textMuted
@@ -235,12 +257,18 @@ export function MatchCard({
 
       {/* Row 6: players */}
       <View style={styles.metaLine}>
-        <Ionicons name="people-outline" size={14} color={colors.textSecondary} />
-        <PlayerCountBadge
-          matchId={match.id}
-          currentPlayers={match.current_players}
-          maxPlayers={match.max_players}
-        />
+        <Ionicons name="people-outline" size={14} color={cancelledNotEnough ? colors.error : colors.textSecondary} />
+        {cancelledNotEnough ? (
+          <Text style={[styles.metaLineText, { color: colors.error, fontWeight: '700' }]}>{t('match.notEnoughPlayers')}</Text>
+        ) : match.current_players >= match.max_players ? (
+          <Text style={styles.metaLineText}>{t('match.full')}</Text>
+        ) : (
+          <PlayerCountBadge
+            matchId={match.id}
+            currentPlayers={match.current_players}
+            maxPlayers={match.max_players}
+          />
+        )}
       </View>
 
       <View style={styles.footer}>
@@ -290,13 +318,25 @@ export function MatchCard({
           ) : null}
           {tournament && onCourtsPress ? (
             <Pressable
-              style={styles.footerIconBtn}
               onPress={() => onCourtsPress(match)}
               hitSlop={{ top: 6, bottom: 6, left: 8, right: 8 }}
               accessibilityRole="button"
               accessibilityLabel={t('match.viewTournamentCourts')}
             >
-              <Ionicons name="grid-outline" size={28} color={colors.primary} />
+              <Animated.View
+                style={[
+                  styles.footerIconBtn,
+                  pulseCourtsBtn && {
+                    borderColor: courtsBorderPulse.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [colors.border, colors.primary],
+                    }),
+                    borderWidth: 2,
+                  },
+                ]}
+              >
+                <Ionicons name="grid-outline" size={28} color={colors.primary} />
+              </Animated.View>
             </Pressable>
           ) : null}
         </View>
@@ -436,8 +476,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   headerStatusIconWrapUpcoming: {
-    backgroundColor: colors.primary + '1A',
-    borderColor: colors.primary + '55',
+    backgroundColor: colors.textSecondary + '1A',
+    borderColor: colors.textSecondary + '55',
   },
   headerStatusIconWrapLive: {
     backgroundColor: colors.success + '1A',

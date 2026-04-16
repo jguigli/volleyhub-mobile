@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
+  Image,
   Platform,
   StyleSheet,
   Text,
@@ -10,74 +12,41 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { ProfileStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/auth.store';
 import { navigateToUserProfile } from '../navigation/navigateToUserProfile';
 import { SkillBadge } from '../components/SkillBadge';
 import { useTranslation } from '../i18n';
 import { colors, spacing, borderRadius, typography } from '../theme';
-import type { PublicUser } from '../api/users.api';
+import { usersApi, type PublicUser } from '../api/users.api';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'SearchUsers'>;
-
-/** Données factices — remplacer par un appel API quand le back sera prêt */
-const MOCK_SEARCH_USERS: PublicUser[] = [
-  {
-    id: 'mock-search-1',
-    username: 'beach_volley_alex',
-    skillLevel: 'intermediate',
-    position: 'outside_hitter',
-    club: null,
-    competition: null,
-    league: null,
-    profilePicture: null,
-    bio: null,
-    createdAt: '2024-01-01T00:00:00.000Z',
-    followersCount: 3,
-    followingCount: 5,
-  },
-  {
-    id: 'mock-search-2',
-    username: 'setter_marie',
-    skillLevel: 'advanced',
-    position: 'setter',
-    club: null,
-    competition: null,
-    league: null,
-    profilePicture: null,
-    bio: null,
-    createdAt: '2024-02-15T00:00:00.000Z',
-    followersCount: 12,
-    followingCount: 4,
-  },
-  {
-    id: 'mock-search-3',
-    username: 'libero_tom',
-    skillLevel: 'beginner',
-    position: 'libero',
-    club: null,
-    competition: null,
-    league: null,
-    profilePicture: null,
-    bio: null,
-    createdAt: '2024-03-20T00:00:00.000Z',
-    followersCount: 1,
-    followingCount: 2,
-  },
-];
 
 export function SearchUsersScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const currentUser = useAuthStore((s) => s.user);
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return MOCK_SEARCH_USERS.filter((u) => u.username.toLowerCase().includes(q));
+  // Debounce the query by 300ms to avoid spamming the API on each keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query.trim());
+    }, 300);
+    return () => clearTimeout(timer);
   }, [query]);
 
+  const enabled = debouncedQuery.length >= 2;
+  const { data: results = [], isFetching } = useQuery<PublicUser[]>({
+    queryKey: ['users', 'search', debouncedQuery],
+    queryFn: () => usersApi.searchUsers(debouncedQuery),
+    enabled,
+    staleTime: 30_000,
+  });
+
   const hasQuery = query.trim().length > 0;
+  const tooShort = hasQuery && debouncedQuery.length < 2;
 
   return (
     <View style={styles.container}>
@@ -95,6 +64,9 @@ export function SearchUsersScreen({ navigation }: Props) {
             ? ({ clearButtonMode: 'while-editing' } as const)
             : {})}
         />
+        {isFetching && enabled ? (
+          <ActivityIndicator size="small" color={colors.primary} />
+        ) : null}
       </View>
 
       {!hasQuery ? (
@@ -102,7 +74,11 @@ export function SearchUsersScreen({ navigation }: Props) {
           <Ionicons name="person-outline" size={48} color={colors.textMuted} />
           <Text style={styles.hint}>{t('userList.searchHint')}</Text>
         </View>
-      ) : results.length === 0 ? (
+      ) : tooShort ? (
+        <View style={styles.centered}>
+          <Text style={styles.hint}>{t('userList.searchTooShort')}</Text>
+        </View>
+      ) : results.length === 0 && !isFetching ? (
         <View style={styles.centered}>
           <Text style={styles.noResults}>{t('userList.noResults')}</Text>
         </View>
@@ -121,9 +97,16 @@ export function SearchUsersScreen({ navigation }: Props) {
               activeOpacity={0.7}
             >
               <View style={styles.avatar}>
-                <Text style={styles.avatarInitial}>
-                  {item.username[0]?.toUpperCase() ?? '?'}
-                </Text>
+                {item.profilePicture ? (
+                  <Image
+                    source={{ uri: item.profilePicture }}
+                    style={styles.avatarImg}
+                  />
+                ) : (
+                  <Text style={styles.avatarInitial}>
+                    {item.username[0]?.toUpperCase() ?? '?'}
+                  </Text>
+                )}
               </View>
               <View style={styles.rowInfo}>
                 <Text style={styles.username}>{item.username}</Text>
@@ -183,6 +166,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatarImg: {
+    width: '100%',
+    height: '100%',
   },
   avatarInitial: {
     color: colors.white,

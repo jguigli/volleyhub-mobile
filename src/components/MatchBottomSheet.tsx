@@ -58,6 +58,23 @@ export function MatchBottomSheet({
     return () => loop.stop();
   }, [pulseTeamsBtn, teamsBorderPulse]);
 
+  const courtsBorderPulse = useRef(new Animated.Value(0)).current;
+  const pulseCourtsBtn = tournament && isLive;
+  useEffect(() => {
+    if (!pulseCourtsBtn) {
+      courtsBorderPulse.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(courtsBorderPulse, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(courtsBorderPulse, { toValue: 0, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulseCourtsBtn, courtsBorderPulse]);
+
   const translateY = useRef(new Animated.Value(500)).current;
   useEffect(() => {
     Animated.spring(translateY, {
@@ -232,12 +249,25 @@ export function MatchBottomSheet({
         ) : null}
         {tournament && onCourtsPress ? (
           <TouchableOpacity
-            style={styles.actionIconBtn}
             onPress={onCourtsPress}
             activeOpacity={0.8}
+            style={{ flex: 1 }}
           >
-            <Ionicons name="grid-outline" size={24} color={colors.primary} />
-            <Text style={styles.actionIconText}>{t('match.viewTournamentCourts')}</Text>
+            <Animated.View
+              style={[
+                styles.actionIconBtn,
+                pulseCourtsBtn && {
+                  borderColor: courtsBorderPulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [colors.primary + '55', colors.primary],
+                  }),
+                  borderWidth: 2,
+                },
+              ]}
+            >
+              <Ionicons name="grid-outline" size={24} color={colors.primary} />
+              <Text style={styles.actionIconText}>{t('match.viewTournamentCourts')}</Text>
+            </Animated.View>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -375,22 +405,20 @@ const styles = StyleSheet.create({
   },
   actionIconBtn: {
     flex: 1,
-    minHeight: 62,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.primary + '55',
-    backgroundColor: colors.primary + '12',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.sm,
-    gap: 6,
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
   actionIconText: {
-    ...typography.caption,
+    ...typography.bodySmall,
     color: colors.primary,
-    textAlign: 'center',
-    fontWeight: '700',
+    fontWeight: '600',
   },
   viewButton: {
     backgroundColor: colors.primary,

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -54,73 +54,74 @@ const NOTIF_ICON: Record<NotificationType, string> = {
   player_left_event: 'exit-outline',
   event_reminder_30min: 'alarm-outline',
   chat_message: 'chatbubble-ellipses-outline',
+  event_cancelled_not_enough_players: 'alert-circle-outline',
 };
 
-const SWIPE_THRESHOLD = -80;
-const DELETE_WIDTH = 72;
+const SWIPE_DELETE_RATIO = 0.10; // 10% de la largeur → supprime
 
 function SwipeableRow({
   onDelete,
   children,
-  openRowRef,
 }: {
   onDelete: () => void;
   children: React.ReactNode;
-  openRowRef: React.MutableRefObject<{ close: () => void } | null>;
 }) {
   const translateX = useRef(new Animated.Value(0)).current;
-  const selfRef = useRef<{ close: () => void }>({
-    close: () => {
-      Animated.spring(translateX, {
-        toValue: 0,
-        useNativeDriver: true,
-        overshootClamping: true,
-      }).start();
-    },
-  });
+  const onDeleteRef = useRef(onDelete);
+  onDeleteRef.current = onDelete;
+  const deleted = useRef(false);
+  const rowWidth = useRef(0);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > 10 && Math.abs(gs.dy) < 20,
-      onPanResponderGrant: () => {
-        if (openRowRef.current && openRowRef.current !== selfRef.current) {
-          openRowRef.current.close();
-        }
-      },
-      onPanResponderMove: (_, gs) => {
-        if (gs.dx < 0) {
-          translateX.setValue(Math.max(gs.dx, -DELETE_WIDTH - 20));
-        }
-      },
-      onPanResponderRelease: (_, gs) => {
-        if (gs.dx < SWIPE_THRESHOLD) {
-          Animated.spring(translateX, {
-            toValue: -DELETE_WIDTH,
-            useNativeDriver: true,
-            overshootClamping: true,
-          }).start();
-          openRowRef.current = selfRef.current;
-        } else {
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-            overshootClamping: true,
-          }).start();
-          if (openRowRef.current === selfRef.current) {
-            openRowRef.current = null;
+  const snapBack = useCallback(() => {
+    Animated.spring(translateX, {
+      toValue: 0,
+      useNativeDriver: true,
+      overshootClamping: true,
+    }).start();
+  }, [translateX]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gs) =>
+          Math.abs(gs.dx) > 10 && Math.abs(gs.dy) < 20,
+        onPanResponderMove: (_, gs) => {
+          if (gs.dx < 0) {
+            translateX.setValue(gs.dx);
           }
-        }
-      },
-    }),
-  ).current;
+        },
+        onPanResponderRelease: (_, gs) => {
+          const w = rowWidth.current || 300;
+          const threshold = -(w * SWIPE_DELETE_RATIO);
+          if (gs.dx < threshold && !deleted.current) {
+            deleted.current = true;
+            Animated.timing(translateX, {
+              toValue: -w,
+              duration: 150,
+              useNativeDriver: true,
+            }).start(() => {
+              onDeleteRef.current();
+            });
+          } else {
+            snapBack();
+          }
+        },
+        onPanResponderTerminate: () => {
+          if (!deleted.current) {
+            snapBack();
+          }
+        },
+      }),
+    [translateX, snapBack],
+  );
 
   return (
-    <View style={styles.swipeContainer}>
+    <View
+      style={styles.swipeContainer}
+      onLayout={(e) => { rowWidth.current = e.nativeEvent.layout.width; }}
+    >
       <View style={styles.deleteAction}>
-        <Pressable style={styles.deleteBtn} onPress={onDelete}>
-          <Ionicons name="trash-outline" size={20} color={colors.white} />
-        </Pressable>
+        <Ionicons name="trash-outline" size={20} color={colors.white} />
       </View>
       <Animated.View
         style={{ transform: [{ translateX }] }}
@@ -145,7 +146,6 @@ export function NotificationsScreen({ navigation }: Props) {
   const decline = useDeclineFollowRequest();
   const unread = useUnreadNotifications();
   const isFocused = useIsFocused();
-  const openRowRef = useRef<{ close: () => void } | null>(null);
 
   const connectionRequests = data ?? [];
   const inviteItems = invitesQ.data ?? [];
@@ -274,7 +274,7 @@ export function NotificationsScreen({ navigation }: Props) {
           ? `${u.username} t'a envoy\u00e9 une invitation de connexion.`
           : `${u.username} sent you a connection request.`;
       return (
-        <SwipeableRow onDelete={() => handleDecline(u.id)} openRowRef={openRowRef}>
+        <SwipeableRow onDelete={() => handleDecline(u.id)}>
           <Pressable
             style={styles.row}
             onPress={() => navigateToUserProfile(navigation, u.id, currentUser?.id)}
@@ -321,14 +321,14 @@ export function NotificationsScreen({ navigation }: Props) {
           ? `${inv.inviterUsername} t\u0027a invit\u00e9 \u00e0 rejoindre un ${eventKind}.`
           : `${inv.inviterUsername} invited you to join a ${eventKind}.`;
       return (
-        <SwipeableRow onDelete={() => dismissInviteMut.mutate(inv.id)} openRowRef={openRowRef}>
+        <SwipeableRow onDelete={() => dismissInviteMut.mutate(inv.id)}>
           <Pressable
             style={styles.row}
             onPress={() => navigation.navigate("MatchDetail" as any, { matchId: inv.matchId })}
           >
             <View style={styles.rowMain}>
               <View style={[styles.avatar, styles.inviteAvatar]}>
-                <Ionicons name="mail-open-outline" size={18} color={colors.primary} />
+                <Ionicons name="mail-open-outline" size={18} color={colors.white} />
               </View>
               <View style={[styles.rowText, styles.inviteRowText]}>
                 <Text style={styles.sectionLabel}>{inviteTitle}</Text>
@@ -365,6 +365,7 @@ export function NotificationsScreen({ navigation }: Props) {
         case "player_left_event":
           return t("notifications.headerPlayers");
         case "event_completed":
+        case "event_cancelled_not_enough_players":
           return t("notifications.headerResult");
         case "opponent_score_locked":
         case "score_overridden":
@@ -386,7 +387,7 @@ export function NotificationsScreen({ navigation }: Props) {
     const onTap = getGeneralAction(n);
 
     return (
-      <SwipeableRow onDelete={() => dismissNotifMut.mutate(n.id)} openRowRef={openRowRef}>
+      <SwipeableRow onDelete={() => dismissNotifMut.mutate(n.id)}>
         <Pressable
           style={styles.row}
           onPress={onTap ?? undefined}
@@ -394,7 +395,7 @@ export function NotificationsScreen({ navigation }: Props) {
         >
           <View style={styles.rowMain}>
             <View style={[styles.avatar, styles.generalAvatar]}>
-              <Ionicons name={iconName as any} size={18} color={colors.primary} />
+              <Ionicons name={iconName as any} size={18} color={colors.white} />
             </View>
             <View style={[styles.rowText, styles.inviteRowText]}>
               <Text style={styles.sectionLabel}>{headerLabel}</Text>
@@ -468,13 +469,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingRight: spacing.lg,
   },
-  deleteBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -530,10 +524,10 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   inviteAvatar: {
-    backgroundColor: colors.primary + '18',
+    backgroundColor: colors.primary,
   },
   generalAvatar: {
-    backgroundColor: colors.primary + '18',
+    backgroundColor: colors.primary,
   },
   inviteRowText: {
     marginLeft: spacing.xs,

@@ -432,6 +432,27 @@ export function MatchDetailScreen({ route, navigation }: Props) {
     return () => loop.stop();
   }, [pulseTeamsBtn, teamsBtnPulse]);
 
+  const courtsBtnPulse = useRef(new Animated.Value(0)).current;
+  const pulseCourtsBtn = Boolean(
+    match &&
+      isTournamentMatch(match) &&
+      timingBadgeForPulse === 'live',
+  );
+  useEffect(() => {
+    if (!pulseCourtsBtn) {
+      courtsBtnPulse.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(courtsBtnPulse, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(courtsBtnPulse, { toValue: 0, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulseCourtsBtn, courtsBtnPulse]);
+
   const [nowTick, setNowTick] = useState(Date.now());
   useEffect(() => {
     if (!match) return;
@@ -594,7 +615,7 @@ export function MatchDetailScreen({ route, navigation }: Props) {
                 size={13}
                 color={
                   timingBadge === 'upcoming'
-                    ? colors.primary
+                    ? colors.textSecondary
                     : timingBadge === 'live'
                       ? colors.success
                       : colors.textMuted
@@ -709,6 +730,11 @@ export function MatchDetailScreen({ route, navigation }: Props) {
             currentPlayers={match.currentPlayers}
             maxPlayers={match.maxPlayers}
             matchStatus={match.status}
+            cancelledNotEnough={match.status === 'completed' && (
+              tournament
+                ? !match.tournamentGames?.some((g: any) => g.status === 'finished' && (g.scoreA > 0 || g.scoreB > 0))
+                : (!match.setScores || match.setScores.length === 0)
+            )}
             large
             onPress={() =>
               navigation.navigate('MatchParticipants', { matchId })
@@ -757,14 +783,26 @@ export function MatchDetailScreen({ route, navigation }: Props) {
 
           {tournament ? (
             <TouchableOpacity
-              style={styles.tournamentActionBtn}
               onPress={() => navigation.navigate('TournamentCourts', { matchId })}
               activeOpacity={0.8}
+              style={{ flex: 1 }}
             >
-              <Ionicons name="grid-outline" size={20} color={colors.primary} />
-              <Text style={styles.tournamentActionBtnText}>
-                {t('match.viewTournamentCourts')}
-              </Text>
+              <Animated.View
+                style={[
+                  styles.tournamentActionBtn,
+                  pulseCourtsBtn && {
+                    borderColor: courtsBtnPulse.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [colors.primary + '44', colors.primary],
+                    }),
+                  },
+                ]}
+              >
+                <Ionicons name="grid-outline" size={20} color={colors.primary} />
+                <Text style={styles.tournamentActionBtnText}>
+                  {t('match.viewTournamentCourts')}
+                </Text>
+              </Animated.View>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -1058,6 +1096,14 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
     padding: spacing.xs,
   },
+  headerGuideBtnCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   chatIconWrap: {
     position: 'relative',
   },
@@ -1255,8 +1301,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   headerStatusIconWrapUpcoming: {
-    backgroundColor: colors.primary + '1A',
-    borderColor: colors.primary + '55',
+    backgroundColor: colors.textSecondary + '1A',
+    borderColor: colors.textSecondary + '55',
   },
   headerStatusIconWrapLive: {
     backgroundColor: colors.success + '1A',

@@ -104,7 +104,6 @@ export function MyMatchesCalendarScreen({ navigation }: Props) {
         key={cell.key}
         style={[
           styles.dayCell,
-          hasEvent && styles.dayCellHighlighted,
           isSelected && styles.dayCellSelected,
         ]}
         onPress={() => setSelectedDayKey(key)}
@@ -112,8 +111,8 @@ export function MyMatchesCalendarScreen({ navigation }: Props) {
         <Text
           style={[
             styles.dayCellText,
-            hasEvent && styles.dayCellTextHighlighted,
-            isSelected && styles.dayCellTextSelected,
+            hasEvent && !isSelected && styles.dayCellTextHighlighted,
+            isSelected && styles.dayCellTextWhite,
           ]}
         >
           {cell.day}
@@ -247,8 +246,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: borderRadius.md,
   },
-  dayCellHighlighted: {
-    backgroundColor: colors.primary + '22',
+  dayCellTextHighlighted: {
+    color: colors.primary,
+    fontWeight: '800',
   },
   dayCellSelected: {
     backgroundColor: colors.primary,
@@ -258,10 +258,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '600',
   },
-  dayCellTextHighlighted: {
-    color: colors.primary,
-  },
-  dayCellTextSelected: {
+  dayCellTextWhite: {
     color: colors.white,
   },
   list: {

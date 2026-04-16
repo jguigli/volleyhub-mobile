@@ -36,6 +36,43 @@ const POSITIONS: Position[] = [
   'any',
 ];
 
+function PasswordRule({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <View style={ruleStyles.row}>
+      <Ionicons
+        name={ok ? 'checkmark-circle' : 'ellipse-outline'}
+        size={14}
+        color={ok ? colors.success : colors.textMuted}
+      />
+      <Text style={[ruleStyles.text, ok && ruleStyles.textOk]}>{label}</Text>
+    </View>
+  );
+}
+
+const ruleStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  text: {
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  textOk: {
+    color: colors.success,
+  },
+});
+
+const PASSWORD_RULES = {
+  minLength: (p: string) => p.length >= 8,
+  uppercase: (p: string) => /[A-Z]/.test(p),
+  lowercase: (p: string) => /[a-z]/.test(p),
+  digit: (p: string) => /\d/.test(p),
+  special: (p: string) => /[^A-Za-z0-9]/.test(p),
+};
+
 export function RegisterScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const [username, setUsername] = useState('');
@@ -45,6 +82,15 @@ export function RegisterScreen({ navigation }: Props) {
   const [position, setPosition] = useState<Position>('any');
   const [loading, setLoading] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
+
+  const passwordChecks = {
+    minLength: PASSWORD_RULES.minLength(password),
+    uppercase: PASSWORD_RULES.uppercase(password),
+    lowercase: PASSWORD_RULES.lowercase(password),
+    digit: PASSWORD_RULES.digit(password),
+    special: PASSWORD_RULES.special(password),
+  };
+  const passwordValid = Object.values(passwordChecks).every(Boolean);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -66,8 +112,8 @@ export function RegisterScreen({ navigation }: Props) {
       return;
     }
 
-    if (password.length < 8) {
-      Alert.alert(t('common.error'), t('auth.passwordMinError'));
+    if (!passwordValid) {
+      Alert.alert(t('common.error'), t('auth.passwordRulesError'));
       return;
     }
 
@@ -145,6 +191,15 @@ export function RegisterScreen({ navigation }: Props) {
             onChangeText={setPassword}
             secureTextEntry
           />
+          {password.length > 0 ? (
+            <View style={styles.passwordRules}>
+              <PasswordRule ok={passwordChecks.minLength} label={t('auth.ruleMinLength')} />
+              <PasswordRule ok={passwordChecks.uppercase} label={t('auth.ruleUppercase')} />
+              <PasswordRule ok={passwordChecks.lowercase} label={t('auth.ruleLowercase')} />
+              <PasswordRule ok={passwordChecks.digit} label={t('auth.ruleDigit')} />
+              <PasswordRule ok={passwordChecks.special} label={t('auth.ruleSpecial')} />
+            </View>
+          ) : null}
 
           <Text style={styles.label}>{t('auth.skillLevel')}</Text>
           <View style={styles.chips}>
@@ -265,6 +320,10 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     color: colors.text,
     fontSize: 16,
+  },
+  passwordRules: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
   chips: {
     flexDirection: 'row',

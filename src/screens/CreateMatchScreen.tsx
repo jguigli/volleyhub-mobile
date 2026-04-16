@@ -471,19 +471,17 @@ export function CreateMatchScreen({ navigation, route }: Props) {
               scoringRule,
             });
 
-      Alert.alert(
-        t('createMatch.eventCreatedTitle'),
-        t('createMatch.eventCreatedMessage'),
-        [
-          {
-            text: t('createMatch.viewEvent'),
-            onPress: () => {
-              navigation.replace('MatchDetail', { matchId: match.id });
-            },
-          },
-        ],
-      );
+      navigation.replace('MatchDetail', { matchId: match.id });
     } catch (err: unknown) {
+      const errObj = err as { response?: { status?: number }; message?: string };
+      const status = errObj?.response?.status;
+      if (status === 429) {
+        Alert.alert(
+          t('createMatch.rateLimitTitle'),
+          t('createMatch.rateLimitMessage'),
+        );
+        return;
+      }
       const msg =
         err instanceof Error ? err.message : t('createMatch.createFailed');
       Alert.alert(t('common.error'), msg);
@@ -559,7 +557,6 @@ export function CreateMatchScreen({ navigation, route }: Props) {
       setShowMapPicker(false);
       setOpenedFromMapIntent(false);
       setMapPickedPoint(null);
-      Alert.alert(t('createMatch.locationSelectedTitle'), t('createMatch.locationSelectedMessage'));
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : t('createMatch.createLocationFailed');
@@ -782,7 +779,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                           <Ionicons
                             name={def.icon}
                             size={18}
-                            color={selected ? colors.primary : colors.textMuted}
+                            color={selected ? colors.white : colors.textMuted}
                           />
                           <Text
                             style={[
@@ -797,7 +794,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                             <Ionicons
                               name="checkmark-circle"
                               size={22}
-                              color={colors.primary}
+                              color={colors.white}
                             />
                           ) : (
                             <Ionicons
@@ -1607,7 +1604,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tournamentSystemCardTitleSelected: {
-    color: colors.primaryLight,
+    color: colors.white,
   },
   tournamentSystemInfoBtn: {
     width: 28,

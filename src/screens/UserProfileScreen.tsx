@@ -700,7 +700,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   tabBlockHeaderActive: {
-    color: colors.primary,
+    color: colors.white,
   },
   tabBlockHeaderInactive: {
     color: colors.textMuted,
