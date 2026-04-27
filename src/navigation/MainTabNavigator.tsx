@@ -591,8 +591,6 @@ export function MainTabNavigator() {
             iconName = focused ? 'search' : 'search-outline';
           } else if (route.name === 'MyTab') {
             iconName = focused ? 'bookmark' : 'bookmark-outline';
-          } else if (route.name === 'MapTab') {
-            iconName = focused ? 'earth' : 'earth-outline';
           } else if (route.name === 'NotificationsTab') {
             iconName = focused ? 'notifications' : 'notifications-outline';
           } else if (route.name === 'ProfileTab') {
@@ -620,7 +618,10 @@ export function MainTabNavigator() {
       <Tab.Screen
         name="MapTab"
         component={MapNavigator}
-        options={{ tabBarAccessibilityLabel: t('tabs.map') }}
+        options={{
+          tabBarAccessibilityLabel: t('tabs.map'),
+          tabBarButton: () => null,
+        }}
       />
       <Tab.Screen
         name="NotificationsTab"

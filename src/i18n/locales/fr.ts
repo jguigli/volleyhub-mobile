@@ -106,6 +106,9 @@ export const fr: TranslationTree = {
     helpFaqRenewBody: 'Apr\u00e8s avoir enregistr\u00e9 tous les scores, un bouton Renouveler appara\u00eet en bas de la page Score.',
     helpContactTitle: 'Nous contacter',
     helpEmail: 'Envoyer un e-mail',
+    helpLegalTitle: 'Informations légales',
+    helpTerms: 'Conditions d\u0027utilisation',
+    helpPrivacy: 'Politique de confidentialité',
   },
   auth: {
     tagline: 'Trouve ton match, joue à fond',

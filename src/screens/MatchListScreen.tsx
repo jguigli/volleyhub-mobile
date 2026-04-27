@@ -67,19 +67,6 @@ export function MatchListScreen({ navigation }: Props) {
     navigation.setOptions({
       headerLeft: () => (
         <Pressable
-          onPress={() => {
-            nearbyQuery.refetch();
-            myMatchesQuery.refetch();
-          }}
-          style={styles.headerRefreshBtn}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
-        >
-          <Ionicons name="refresh-outline" size={22} color={colors.text} />
-        </Pressable>
-      ),
-      headerRight: () => (
-        <Pressable
           onPress={() => setShowFilters((v) => !v)}
           style={styles.headerFilterBtn}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -92,8 +79,20 @@ export function MatchListScreen({ navigation }: Props) {
           />
         </Pressable>
       ),
+      headerRight: () => (
+        <Pressable
+          onPress={() =>
+            (navigation as any).getParent()?.navigate('MapTab', { screen: 'Map' })
+          }
+          style={styles.headerMapBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+        >
+          <Ionicons name="earth-outline" size={22} color={colors.text} />
+        </Pressable>
+      ),
     });
-  }, [navigation, showFilters, nearbyQuery.refetch, myMatchesQuery.refetch]);
+  }, [navigation, showFilters]);
   const labels = {
     filters: 'Filtres',
     level: 'Niveau',
@@ -407,14 +406,14 @@ const styles = StyleSheet.create({
   filterChipTextActive: {
     color: colors.white,
   },
-  headerRefreshBtn: {
+  headerFilterBtn: {
     width: 44,
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: spacing.xs,
   },
-  headerFilterBtn: {
+  headerMapBtn: {
     width: 44,
     height: 44,
     justifyContent: 'center',

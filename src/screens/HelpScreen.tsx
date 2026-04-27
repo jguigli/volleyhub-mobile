@@ -51,6 +51,34 @@ export function HelpScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('settings.helpLegalTitle')}</Text>
+        <TouchableOpacity
+          style={styles.contactCard}
+          onPress={() => Linking.openURL('https://volleyhub.io/terms')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+          <View style={styles.contactText}>
+            <Text style={styles.contactLabel}>{t('settings.helpTerms')}</Text>
+            <Text style={styles.contactValue}>volleyhub.io/terms</Text>
+          </View>
+          <Ionicons name="open-outline" size={16} color={colors.textMuted} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.contactCard}
+          onPress={() => Linking.openURL('https://volleyhub.io/privacy')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
+          <View style={styles.contactText}>
+            <Text style={styles.contactLabel}>{t('settings.helpPrivacy')}</Text>
+            <Text style={styles.contactValue}>volleyhub.io/privacy</Text>
+          </View>
+          <Ionicons name="open-outline" size={16} color={colors.textMuted} />
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.versionText}>VolleyHub v1.0.0</Text>
     </ScrollView>
   );

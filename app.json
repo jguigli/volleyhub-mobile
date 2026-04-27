@@ -20,6 +20,8 @@
         "NSPhotoLibraryUsageDescription": "VolleyHub needs access to your photos to set your profile picture.",
         "NSCameraUsageDescription": "VolleyHub can use the camera to take your profile picture."
       },
+      "privacyURL": "https://volleyhub.io/privacy.html",
+      "termsOfServiceURL": "https://volleyhub.io/terms.html",
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
           {
@@ -91,10 +93,11 @@
       },
       "package": "com.volleyhub.app",
       "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO"
       ],
       "config": {
         "googleMaps": {
@@ -131,6 +134,11 @@
       "expo-asset",
       "expo-font"
     ],
-    "scheme": "volleyhub"
+    "scheme": "volleyhub",
+    "extra": {
+      "eas": {
+        "projectId": "de79d018-db98-4a5f-b2d8-2ab49379f6e6"
+      }
+    }
   }
 }

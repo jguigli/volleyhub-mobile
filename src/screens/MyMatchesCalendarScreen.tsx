@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -13,15 +12,13 @@ import { MyStackParamList } from '../navigation/types';
 import { useMyMatches } from '../hooks/useMatches';
 import { useAuthStore } from '../store/auth.store';
 import { MatchCard } from '../components/MatchCard';
+import { CalendarPicker } from '../components/CalendarPicker';
 import { useTranslation } from '../i18n';
-import { colors, spacing, borderRadius, typography } from '../theme';
+import { colors, spacing } from '../theme';
 import type { NearbyMatch } from '../types';
 import { navigateToUserProfile } from '../navigation/navigateToUserProfile';
 
 type Props = NativeStackScreenProps<MyStackParamList, 'MyMatchesCalendar'>;
-
-const WEEKDAY_KEYS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
-const WEEKDAY_KEYS_EN = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 function toDayKey(d: Date): string {
   const y = d.getFullYear();
@@ -30,25 +27,14 @@ function toDayKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function monthLabel(date: Date, localeTag: string): string {
-  return new Intl.DateTimeFormat(localeTag, { month: 'long', year: 'numeric' }).format(date);
-}
-
-function startOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function endOfMonth(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
-}
-
 export function MyMatchesCalendarScreen({ navigation }: Props) {
   const { t, locale } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const { data: allMatches, isLoading, refetch, isFetching } = useMyMatches();
   const [displayMonth, setDisplayMonth] = useState(() => new Date());
-  const [selectedDayKey, setSelectedDayKey] = useState(() => toDayKey(new Date()));
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
 
+  const selectedDayKey = toDayKey(selectedDate);
   const allMyMatches = allMatches ?? [];
 
   const matchesByDay = useMemo(() => {
@@ -70,56 +56,12 @@ export function MyMatchesCalendarScreen({ navigation }: Props) {
     return map;
   }, [allMyMatches]);
 
+  const eventDays = useMemo(
+    () => new Set(matchesByDay.keys()),
+    [matchesByDay],
+  );
+
   const selectedDayMatches = matchesByDay.get(selectedDayKey) ?? [];
-
-  const monthStart = startOfMonth(displayMonth);
-  const monthEnd = endOfMonth(displayMonth);
-  const firstDayOffset = monthStart.getDay();
-  const totalDays = monthEnd.getDate();
-
-  const cells: Array<{ key: string; day?: number }> = [];
-  for (let i = 0; i < firstDayOffset; i += 1) {
-    cells.push({ key: `empty-start-${i}` });
-  }
-  for (let day = 1; day <= totalDays; day += 1) {
-    cells.push({ key: `day-${day}`, day });
-  }
-  while (cells.length % 7 !== 0) {
-    cells.push({ key: `empty-end-${cells.length}` });
-  }
-
-  const monthTitle = monthLabel(displayMonth, locale === 'fr' ? 'fr-FR' : 'en-US');
-  const weekdayLabels = locale === 'fr' ? WEEKDAY_KEYS : WEEKDAY_KEYS_EN;
-
-  const renderCalendarDay = (cell: { key: string; day?: number }) => {
-    if (!cell.day) {
-      return <View key={cell.key} style={styles.dayCell} />;
-    }
-    const date = new Date(displayMonth.getFullYear(), displayMonth.getMonth(), cell.day);
-    const key = toDayKey(date);
-    const hasEvent = (matchesByDay.get(key)?.length ?? 0) > 0;
-    const isSelected = key === selectedDayKey;
-    return (
-      <Pressable
-        key={cell.key}
-        style={[
-          styles.dayCell,
-          isSelected && styles.dayCellSelected,
-        ]}
-        onPress={() => setSelectedDayKey(key)}
-      >
-        <Text
-          style={[
-            styles.dayCellText,
-            hasEvent && !isSelected && styles.dayCellTextHighlighted,
-            isSelected && styles.dayCellTextWhite,
-          ]}
-        >
-          {cell.day}
-        </Text>
-      </Pressable>
-    );
-  };
 
   const renderCard = ({ item }: { item: NearbyMatch }) => (
     <MatchCard
@@ -151,35 +93,15 @@ export function MyMatchesCalendarScreen({ navigation }: Props) {
       refreshing={isFetching}
       showsVerticalScrollIndicator={false}
       ListHeaderComponent={
-        <View style={styles.calendarCard}>
-          <View style={styles.calendarHeader}>
-            <Pressable
-              style={styles.monthArrow}
-              onPress={() =>
-                setDisplayMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
-              }
-            >
-              <Ionicons name="chevron-back" size={18} color={colors.textSecondary} />
-            </Pressable>
-            <Text style={styles.monthLabel}>{monthTitle}</Text>
-            <Pressable
-              style={styles.monthArrow}
-              onPress={() =>
-                setDisplayMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
-              }
-            >
-              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-            </Pressable>
-          </View>
-
-          <View style={styles.weekdaysRow}>
-            {weekdayLabels.map((w, idx) => (
-              <Text key={`${w}-${idx}`} style={styles.weekdayLabel}>
-                {w}
-              </Text>
-            ))}
-          </View>
-          <View style={styles.daysGrid}>{cells.map(renderCalendarDay)}</View>
+        <View style={styles.calendarWrap}>
+          <CalendarPicker
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+            displayMonth={displayMonth}
+            onDisplayMonthChange={setDisplayMonth}
+            locale={locale}
+            eventDays={eventDays}
+          />
         </View>
       }
       ListEmptyComponent={
@@ -197,69 +119,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  calendarCard: {
+  calendarWrap: {
     margin: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-  },
-  calendarHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  monthArrow: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.card,
-  },
-  monthLabel: {
-    ...typography.h3,
-    color: colors.text,
-    textTransform: 'capitalize',
-  },
-  weekdaysRow: {
-    flexDirection: 'row',
-    marginBottom: spacing.xs,
-  },
-  weekdayLabel: {
-    flex: 1,
-    textAlign: 'center',
-    ...typography.caption,
-    color: colors.textMuted,
-    fontWeight: '700',
-  },
-  daysGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  dayCell: {
-    width: '14.2857%',
-    paddingVertical: spacing.sm + 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: borderRadius.md,
-  },
-  dayCellTextHighlighted: {
-    color: colors.primary,
-    fontWeight: '800',
-  },
-  dayCellSelected: {
-    backgroundColor: colors.primary,
-  },
-  dayCellText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  dayCellTextWhite: {
-    color: colors.white,
   },
   list: {
     paddingBottom: spacing.sm,
@@ -272,7 +133,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   emptyText: {
-    ...typography.body,
+    fontSize: 15,
     color: colors.textMuted,
     textAlign: 'center',
   },

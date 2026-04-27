@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,6 +25,21 @@ export function ForgotPasswordScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerBackTitle: '',
+      headerLeft: () => (
+        <Pressable
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ padding: 4 }}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
+        </Pressable>
+      ),
+    });
+  }, [navigation]);
 
   const handleSubmit = async () => {
     const trimmed = email.trim().toLowerCase();

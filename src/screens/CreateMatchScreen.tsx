@@ -13,9 +13,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import DateTimePicker, {
-  DateTimePickerEvent,
-} from '@react-native-community/datetimepicker';
+import { CalendarPicker } from '../components/CalendarPicker';
+import { TimeWheelPicker } from '../components/TimeWheelPicker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView from 'react-native-maps';
@@ -26,10 +25,7 @@ import { useCreateMatch } from '../hooks/useMatches';
 import { useCreateCourt } from '../hooks/useCourts';
 import { useLocation } from '../hooks/useLocation';
 import {
-  appleTimePickerLocale,
-  localeToAppleLocale,
   localeToBcp47,
-  prefers24HourClock,
   useTranslation,
 } from '../i18n';
 import {
@@ -205,7 +201,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
   const bottomInset = useBottomInset();
   const { mapProps: mapThemeProps, mapThemeKey } = useMapViewDarkModeProps();
   const localeTag = localeToBcp47(locale);
-  const use24HourClock = prefers24HourClock(locale);
+  const [calendarDisplayMonth, setCalendarDisplayMonth] = useState(() => new Date());
   const openMapPickerParam = route.params?.openMapPicker;
   const pickerLatParam = route.params?.pickerLat;
   const pickerLngParam = route.params?.pickerLng;
@@ -381,13 +377,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
     tournamentSystem === 'round_robin' && roundRobinMatchCount > 15;
 
   // Estimated tournament duration
-  const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
-    if (event.type === 'dismissed') {
-      return;
-    }
-    if (!date) {
-      return;
-    }
+  const handleDateChange = (date: Date) => {
     setScheduledAt((prev) => {
       const next = new Date(prev);
       next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
@@ -395,16 +385,10 @@ export function CreateMatchScreen({ navigation, route }: Props) {
     });
   };
 
-  const handleTimeChange = (event: DateTimePickerEvent, date?: Date) => {
-    if (event.type === 'dismissed') {
-      return;
-    }
-    if (!date) {
-      return;
-    }
+  const handleTimeChange = (hour: number, minute: number) => {
     setScheduledAt((prev) => {
       const next = new Date(prev);
-      next.setHours(date.getHours(), date.getMinutes(), 0, 0);
+      next.setHours(hour, minute, 0, 0);
       return next;
     });
   };
@@ -1221,47 +1205,22 @@ export function CreateMatchScreen({ navigation, route }: Props) {
             showsVerticalScrollIndicator={false}
           >
             <Text style={styles.dateControlLabel}>{t('createMatch.dateLabel')}</Text>
-            <View style={styles.calendarWrap}>
-              <DateTimePicker
-                key={`date-${locale}`}
-                value={scheduledAt}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                onChange={handleDateChange}
-                minimumDate={minSelectableDate}
-                {...(Platform.OS === 'ios'
-                  ? {
-                      themeVariant: 'dark' as const,
-                      textColor: colors.white,
-                      accentColor: colors.primary,
-                      locale: localeToAppleLocale(locale),
-                    }
-                  : { textColor: colors.white })}
-              />
-            </View>
+            <CalendarPicker
+              selectedDate={scheduledAt}
+              onDateChange={handleDateChange}
+              displayMonth={calendarDisplayMonth}
+              onDisplayMonthChange={setCalendarDisplayMonth}
+              minimumDate={minSelectableDate}
+              locale={locale}
+            />
             <Text style={[styles.dateControlLabel, styles.dateTimeModalTimeLabel]}>
               {t('createMatch.timeLabel')}
             </Text>
-            <View style={styles.timeCardWrap}>
-              <View style={styles.timePickerWrap}>
-                <DateTimePicker
-                  key={`time-${locale}-${use24HourClock ? '24' : '12'}`}
-                  value={scheduledAt}
-                  mode="time"
-                  display="spinner"
-                  onChange={handleTimeChange}
-                  {...(Platform.OS === 'ios'
-                    ? {
-                        themeVariant: 'dark' as const,
-                        textColor: colors.white,
-                        accentColor: colors.primary,
-                        minuteInterval: 1,
-                        locale: appleTimePickerLocale(locale, use24HourClock),
-                      }
-                    : { textColor: colors.white, is24Hour: use24HourClock })}
-                />
-              </View>
-            </View>
+            <TimeWheelPicker
+              hour={scheduledAt.getHours()}
+              minute={scheduledAt.getMinutes()}
+              onTimeChange={handleTimeChange}
+            />
           </ScrollView>
         </View>
       </Modal>
@@ -1458,32 +1417,6 @@ const styles = StyleSheet.create({
   },
   dateTimeModalTimeLabel: {
     marginTop: spacing.md,
-  },
-  calendarWrap: {
-    overflow: 'hidden',
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignSelf: 'stretch',
-  },
-  timeCardWrap: {
-    overflow: 'hidden',
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignSelf: 'stretch',
-  },
-  timePickerWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'stretch',
-    ...Platform.select({
-      ios: { height: 216 },
-      android: { minHeight: 180 },
-      default: {},
-    }),
   },
   dateControlLabel: {
     color: colors.textSecondary,

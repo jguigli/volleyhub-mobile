@@ -315,7 +315,15 @@ export function MapScreen({ navigation, route }: Props) {
         </Pressable>
       </View>
 
-      <View style={[styles.legend, isMapDark ? styles.legendDark : styles.legendLight, { top: insets.top + 12 }]}>
+      <Pressable
+        style={[styles.backButton, { top: insets.top + 12 }]}
+        onPress={() => (navigation as any).getParent()?.navigate('FindTab')}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Ionicons name="chevron-back" size={22} color={colors.white} />
+      </Pressable>
+
+      <View style={[styles.legend, isMapDark ? styles.legendDark : styles.legendLight, { bottom: insets.bottom + 24 }]}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: colors.matchOrange }]} />
           <Text style={[styles.legendText, { color: isMapDark ? colors.text : colors.black }]}>
@@ -445,6 +453,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(18,26,36,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
   loadingOverlay: {
     position: 'absolute',

@@ -146,14 +146,16 @@ export function RegisterScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <View style={styles.logoWrap}>
-            <Image
-              source={require('../../assets/logo.png')}
-              style={styles.logoImage}
-              resizeMode="cover"
-              accessible
-              accessibilityLabel="VolleyHub Logo"
-            />
+          <View style={styles.logoShadow}>
+            <View style={styles.logoClip}>
+              <Image
+                source={require('../../assets/logo.png')}
+                style={styles.logoImage}
+                resizeMode="cover"
+                accessible
+                accessibilityLabel="VolleyHub Logo"
+              />
+            </View>
           </View>
           <Text style={styles.title}>{t('auth.createAccountTitle')}</Text>
           <Text style={styles.subtitle}>{t('auth.joinCommunity')}</Text>
@@ -284,12 +286,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xl,
   },
-  logoWrap: {
+  logoShadow: {
+    width: 130,
+    height: 130,
+    borderRadius: 28,
+    marginBottom: spacing.md,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 20,
+  },
+  logoClip: {
     width: 130,
     height: 130,
     borderRadius: 28,
     overflow: 'hidden',
-    marginBottom: spacing.md,
   },
   logoImage: {
     width: '100%',

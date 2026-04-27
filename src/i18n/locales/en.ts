@@ -104,6 +104,9 @@ export const en = {
     helpFaqRenewBody: 'After recording all scores, a Renew button appears at the bottom of the Score page.',
     helpContactTitle: 'Contact us',
     helpEmail: 'Send an email',
+    helpLegalTitle: 'Legal information',
+    helpTerms: 'Terms of Service',
+    helpPrivacy: 'Privacy Policy',
   },
   auth: {
     tagline: 'Find your game, play your best',
