@@ -66,6 +66,7 @@ export interface User {
   profilePicture: string | null;
   bio?: string | null;
   fcmToken: string | null;
+  locale: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import { colors } from '../theme/colors';
 import { usersApi } from '../api/users.api';
 import { useAuthStore } from '../store/auth.store';
+import { useTranslation } from '../i18n';
 import { navigateToMatchDetailFromNotification } from '../navigation/rootNavigation';
 import { saveInviteNotification } from '../utils/inviteNotifications';
 
@@ -52,14 +53,22 @@ async function registerForPushNotifications(): Promise<string | null> {
 
 export function useNotifications() {
   const { user, updateUser } = useAuthStore();
+  const { locale } = useTranslation();
 
   useEffect(() => {
     if (!user) return;
 
     registerForPushNotifications().then((token) => {
-      if (token && token !== user.fcmToken) {
+      const needsTokenUpdate = token && token !== user.fcmToken;
+      const needsLocaleUpdate = locale !== user.locale;
+
+      if (needsTokenUpdate || needsLocaleUpdate) {
+        const payload: { fcmToken?: string; locale?: string } = {};
+        if (needsTokenUpdate) payload.fcmToken = token;
+        if (needsLocaleUpdate) payload.locale = locale;
+
         usersApi
-          .updateMe({ fcmToken: token })
+          .updateMe(payload)
           .then((updated) => updateUser(updated))
           .catch(() => {});
       }

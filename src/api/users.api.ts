@@ -94,6 +94,7 @@ export const usersApi = {
     profilePicture?: string;
     bio?: string;
     fcmToken?: string;
+    locale?: string;
     lat?: number;
     lng?: number;
   }): Promise<User> => {
