@@ -1,9 +1,15 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLocales } from 'expo-localization';
 import type { Locale } from '../i18n/types';
 
 const STORAGE_KEY = '@volleyhub:locale';
+
+function getDeviceLocale(): Locale {
+  const deviceLang = getLocales()[0]?.languageCode ?? 'fr';
+  return deviceLang === 'fr' ? 'fr' : 'en';
+}
 
 interface LocaleState {
   locale: Locale;
@@ -13,7 +19,7 @@ interface LocaleState {
 export const useLocaleStore = create<LocaleState>()(
   persist(
     (set) => ({
-      locale: 'fr',
+      locale: getDeviceLocale(),
       setLocale: (locale) => set({ locale }),
     }),
     {
