@@ -1,8 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../store/auth.store';
 
-const BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+if (!BASE_URL) {
+  throw new Error('EXPO_PUBLIC_API_URL is not configured');
+}
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
