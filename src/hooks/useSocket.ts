@@ -5,7 +5,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { MATCHES_KEY } from './useMatches';
 import type { MatchChatMessage, NearbyMatch } from '../types';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+if (!API_URL) {
+  throw new Error('EXPO_PUBLIC_API_URL is not configured');
+}
 
 interface MatchUpdate {
   matchId: string;
