@@ -78,6 +78,16 @@ export const fr: TranslationTree = {
     signOut: 'Se déconnecter',
     signOutTitle: 'Déconnexion',
     signOutMessage: 'Voulez-vous vraiment vous déconnecter ?',
+    deleteAccount: 'Supprimer mon compte',
+    deleteAccountTitle: 'Supprimer le compte',
+    deleteAccountMessage:
+      'Cette action est irréversible. Toutes vos données (profil, matchs, équipes, messages, statistiques) seront supprimées définitivement.',
+    deleteAccountConfirm: 'Supprimer',
+    deleteAccountFinalTitle: 'Confirmer la suppression',
+    deleteAccountFinalMessage:
+      'Êtes-vous absolument sûr ? Cette action ne peut pas être annulée.',
+    deleteAccountError:
+      'Impossible de supprimer le compte. Veuillez réessayer plus tard.',
     accessibilitySettings: 'Réglages',
     mapAppearance: 'Apparence de la carte',
     mapAppearanceSystem: "Comme l'appareil",

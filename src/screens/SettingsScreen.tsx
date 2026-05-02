@@ -12,6 +12,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/auth.store';
 import { useMapAppearanceStore } from '../store/mapAppearance.store';
+import { usersApi } from '../api/users.api';
 import { useTranslation } from '../i18n';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import { useBottomInset } from '../hooks/useBottomInset';
@@ -89,6 +90,45 @@ export function SettingsScreen() {
     ]);
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t('settings.deleteAccountTitle'),
+      t('settings.deleteAccountMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('settings.deleteAccountConfirm'),
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              t('settings.deleteAccountFinalTitle'),
+              t('settings.deleteAccountFinalMessage'),
+              [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                  text: t('settings.deleteAccountConfirm'),
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await usersApi.deleteMe();
+                      await clearAuth();
+                    } catch (err: unknown) {
+                      const message =
+                        err instanceof Error
+                          ? err.message
+                          : t('settings.deleteAccountError');
+                      Alert.alert(t('common.error'), message);
+                    }
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -155,6 +195,15 @@ export function SettingsScreen() {
         <Ionicons name="log-out-outline" size={20} color={colors.error} />
         <Text style={styles.logoutText}>{t('settings.signOut')}</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.deleteAccountButton}
+        onPress={handleDeleteAccount}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="trash-outline" size={20} color={colors.error} />
+        <Text style={styles.deleteAccountText}>{t('settings.deleteAccount')}</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -211,5 +260,21 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontSize: 15,
     fontWeight: '600',
+  },
+  deleteAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: colors.error,
+    backgroundColor: colors.error + '22',
+  },
+  deleteAccountText: {
+    color: colors.error,
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

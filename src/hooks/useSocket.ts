@@ -93,7 +93,8 @@ export function useSocket() {
       return;
     }
 
-    if (globalSocket?.connected) {
+    // Reuse existing global socket (connected OR connecting) to avoid duplicate connections
+    if (globalSocket) {
       socketRef.current = globalSocket;
       return;
     }
@@ -105,6 +106,10 @@ export function useSocket() {
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
     });
+
+    // Set global ref immediately so concurrent hook instances reuse this socket
+    globalSocket = socket;
+    socketRef.current = socket;
 
     socket.on('connect', () => {
       console.log('[Socket] Connected');
@@ -122,9 +127,6 @@ export function useSocket() {
 
     socket.on('map_match_updated', handleMapMatchUpdated);
     socket.on('match_updated', handleMatchUpdatedGlobal);
-
-    socketRef.current = socket;
-    globalSocket = socket;
 
     return () => {
       socket.off('map_match_updated', handleMapMatchUpdated);

@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../store/auth.store';
+import { translateError } from './errorMessages';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 if (!BASE_URL) {
@@ -85,15 +86,15 @@ apiClient.interceptors.response.use(
       await useAuthStore.getState().clearAuth();
     }
 
-    const message =
+    const rawMessage =
       axios.isAxiosError(error) && (error as AxiosError).response?.data
         ? (
             (error as AxiosError).response?.data as {
-              message?: string;
+              message?: string | string[];
             }
           ).message ?? 'Something went wrong'
         : 'Network error. Check your connection.';
 
-    return Promise.reject(new Error(message));
+    return Promise.reject(new Error(translateError(rawMessage)));
   },
 );

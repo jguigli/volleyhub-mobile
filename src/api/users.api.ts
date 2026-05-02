@@ -103,4 +103,8 @@ export const usersApi = {
     });
     return res.data;
   },
+
+  deleteMe: async (): Promise<void> => {
+    await apiClient.delete('/users/me');
+  },
 };

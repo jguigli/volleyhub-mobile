@@ -76,6 +76,16 @@ export const en = {
     signOut: 'Sign Out',
     signOutTitle: 'Sign Out',
     signOutMessage: 'Are you sure you want to sign out?',
+    deleteAccount: 'Delete my account',
+    deleteAccountTitle: 'Delete account',
+    deleteAccountMessage:
+      'This action is irreversible. All your data (profile, matches, teams, messages, statistics) will be permanently deleted.',
+    deleteAccountConfirm: 'Delete',
+    deleteAccountFinalTitle: 'Confirm deletion',
+    deleteAccountFinalMessage:
+      'Are you absolutely sure? This action cannot be undone.',
+    deleteAccountError:
+      'Unable to delete account. Please try again later.',
     accessibilitySettings: 'Settings',
     mapAppearance: 'Map appearance',
     mapAppearanceSystem: 'Same as device',
