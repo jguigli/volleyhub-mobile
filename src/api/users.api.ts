@@ -107,4 +107,21 @@ export const usersApi = {
   deleteMe: async (): Promise<void> => {
     await apiClient.delete('/users/me');
   },
+
+  block: async (id: string): Promise<void> => {
+    await apiClient.post(`/users/${id}/block`);
+  },
+
+  unblock: async (id: string): Promise<void> => {
+    await apiClient.delete(`/users/${id}/block`);
+  },
+
+  getBlocks: async (): Promise<
+    { id: string; username: string; profilePicture: string | null; createdAt: string }[]
+  > => {
+    const res = await apiClient.get<
+      { id: string; username: string; profilePicture: string | null; createdAt: string }[]
+    >('/users/me/blocks');
+    return res.data;
+  },
 };

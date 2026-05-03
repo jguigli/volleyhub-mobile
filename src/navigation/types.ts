@@ -28,6 +28,7 @@ export type FindStackParamList = {
   TournamentCourts: { matchId: string };
   TournamentStandings: { matchId: string };
   MatchChat: { matchId: string };
+  ChatModeration: { matchId: string };
   MatchParticipants: { matchId: string };
   InvitePlayer: { matchId: string };
   CreateMatch: CreateMatchParams;
@@ -49,6 +50,7 @@ export type MapStackParamList = {
   TournamentCourts: { matchId: string };
   TournamentStandings: { matchId: string };
   MatchChat: { matchId: string };
+  ChatModeration: { matchId: string };
   MatchParticipants: { matchId: string };
   InvitePlayer: { matchId: string };
   UserProfile: { userId: string };
@@ -69,6 +71,7 @@ export type MyStackParamList = {
   TournamentCourts: { matchId: string };
   TournamentStandings: { matchId: string };
   MatchChat: { matchId: string };
+  ChatModeration: { matchId: string };
   MatchParticipants: { matchId: string };
   InvitePlayer: { matchId: string };
   CreateMatch: CreateMatchParams;
@@ -83,6 +86,7 @@ export type ProfileStackParamList = {
   NotificationSettings: undefined;
   Help: undefined;
   EditProfile: undefined;
+  BlockedUsers: undefined;
   MatchDetail: { matchId: string };
   MatchSettings: { matchId: string };
   EditTournamentSettings: { matchId: string };
@@ -94,6 +98,7 @@ export type ProfileStackParamList = {
   TournamentCourts: { matchId: string };
   TournamentStandings: { matchId: string };
   MatchChat: { matchId: string };
+  ChatModeration: { matchId: string };
   MatchParticipants: { matchId: string };
   InvitePlayer: { matchId: string };
   /** Recherche de joueurs par pseudo (UI mock côté client pour l’instant) */
@@ -113,6 +118,7 @@ export type NotificationsStackParamList = {
   EventScore: { matchId: string };
   TournamentCourts: { matchId: string };
   MatchChat: { matchId: string };
+  ChatModeration: { matchId: string };
   UserProfile: { userId: string };
   Connections: { userId: string };
 };

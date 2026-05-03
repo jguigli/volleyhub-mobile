@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -24,6 +24,8 @@ import {
 import { useUserMatchStats } from '../hooks/useMatches';
 import { useAuthStore } from '../store/auth.store';
 import { SkillBadge } from '../components/SkillBadge';
+import { ReportSheet } from '../components/ReportSheet';
+import { usersApi } from '../api/users.api';
 import { localeToBcp47, useTranslation } from '../i18n';
 import { colors, spacing, borderRadius, typography, shadows } from '../theme';
 import type { League, Position } from '../types';
@@ -60,6 +62,7 @@ const POSITION_KEYS: Record<
 
 export function UserProfileScreen({ route, navigation }: Props) {
   const [statsFormat, setStatsFormat] = useState<'match' | 'tournament'>('match');
+  const [reportOpen, setReportOpen] = useState(false);
   const { t, locale } = useTranslation();
   const localeTag = localeToBcp47(locale);
   const { userId } = route.params;
@@ -73,6 +76,26 @@ export function UserProfileScreen({ route, navigation }: Props) {
   const declineIncoming = useDeclineFollowRequest();
 
   const isOwnProfile = currentUser?.id === userId;
+
+  useLayoutEffect(() => {
+    if (isOwnProfile) {
+      navigation.setOptions({ headerRight: undefined });
+      return;
+    }
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={openMoreMenu}
+          hitSlop={10}
+          style={{ paddingRight: 12 }}
+          accessibilityLabel={t('profile.moreActionsTitle')}
+        >
+          <Ionicons name="ellipsis-horizontal" size={22} color={colors.primary} />
+        </TouchableOpacity>
+      ),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, isOwnProfile, profile?.username]);
 
   if (isLoading) {
     return (
@@ -178,6 +201,51 @@ export function UserProfileScreen({ route, navigation }: Props) {
     } catch {
       Alert.alert(t('common.error'), t('profile.connectionRequestFailed'));
     }
+  };
+
+  const openMoreMenu = () => {
+    if (!profile) return;
+    const profileName = profile.username;
+    const profileIdLocal = profile.id;
+    Alert.alert(t('profile.moreActionsTitle'), undefined, [
+      {
+        text: t('report.action'),
+        onPress: () => setReportOpen(true),
+      },
+      {
+        text: t('block.action'),
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert(
+            t('block.confirmTitle'),
+            t('block.confirmMessage', { name: profileName }),
+            [
+              { text: t('common.cancel'), style: 'cancel' },
+              {
+                text: t('block.action'),
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await usersApi.block(profileIdLocal);
+                    Alert.alert(
+                      t('block.successTitle'),
+                      t('block.successMessage', { name: profileName }),
+                      [{ text: 'OK', onPress: () => navigation.goBack() }],
+                    );
+                  } catch (err: unknown) {
+                    Alert.alert(
+                      t('common.error'),
+                      err instanceof Error ? err.message : t('block.error'),
+                    );
+                  }
+                },
+              },
+            ],
+          );
+        },
+      },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
   };
 
   return (
@@ -407,6 +475,12 @@ export function UserProfileScreen({ route, navigation }: Props) {
       <Text style={styles.memberSinceBottom}>
         {t('profile.memberSince', { date: memberSince })}
       </Text>
+      <ReportSheet
+        visible={reportOpen}
+        targetType="user"
+        targetId={profile.id}
+        onClose={() => setReportOpen(false)}
+      />
     </ScrollView>
   );
 }

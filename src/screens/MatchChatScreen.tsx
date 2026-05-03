@@ -4,11 +4,9 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -17,10 +15,13 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { MatchesStackParamList } from '../navigation/types';
-import { useMatch } from '../hooks/useMatches';
+import { useQueryClient } from '@tanstack/react-query';
+import { MATCHES_KEY, useMatch } from '../hooks/useMatches';
 import { useAuthStore } from '../store/auth.store';
 import { matchesApi } from '../api/matches.api';
 import { useSocket } from '../hooks/useSocket';
+import { usersApi } from '../api/users.api';
+import { ReportSheet } from '../components/ReportSheet';
 import { useTranslation } from '../i18n';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import type { MatchChatMessage } from '../types';
@@ -33,6 +34,7 @@ export function MatchChatScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const { data: match, isLoading } = useMatch(matchId);
+  const queryClient = useQueryClient();
   const { subscribeToMatchChat } = useSocket();
   const unreadChat = useUnreadMatchChat(matchId, user?.id);
 
@@ -42,9 +44,9 @@ export function MatchChatScreen({ route, navigation }: Props) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState('');
-  const [muteModal, setMuteModal] = useState(false);
-  const [mutedIds, setMutedIds] = useState<Set<string>>(new Set());
-  const [muteLoading, setMuteLoading] = useState(false);
+  const [reportTarget, setReportTarget] = useState<
+    { type: 'user' | 'chat_message'; id: string } | null
+  >(null);
   const seenIds = useRef(new Set<string>());
 
   const isParticipant = Boolean(
@@ -131,21 +133,51 @@ export function MatchChatScreen({ route, navigation }: Props) {
     }
   }, [isParticipant, match, navigation, user]);
 
-  const refreshMuted = useCallback(async () => {
-    if (!isCreator) return;
-    try {
-      const ids = await matchesApi.getChatMutedUserIds(matchId);
-      setMutedIds(new Set(ids));
-    } catch {
-      /* ignore */
-    }
-  }, [isCreator, matchId]);
-
-  useEffect(() => {
-    if (isCreator) {
-      refreshMuted();
-    }
-  }, [isCreator, refreshMuted]);
+  const onMessageLongPress = (messageId: string, authorId: string, authorName: string) => {
+    Alert.alert(t('chat.actionsTitle'), undefined, [
+      {
+        text: t('report.actionMessage'),
+        onPress: () => setReportTarget({ type: 'chat_message', id: messageId }),
+      },
+      {
+        text: t('block.action'),
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert(
+            t('block.confirmTitle'),
+            t('block.confirmMessage', { name: authorName }),
+            [
+              { text: t('common.cancel'), style: 'cancel' },
+              {
+                text: t('block.action'),
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await usersApi.block(authorId);
+                    Alert.alert(
+                      t('block.successTitle'),
+                      t('block.successMessage', { name: authorName }),
+                    );
+                    // Hide messages from blocked user locally. Mute panel still shows
+                    // them so the organizer can keep moderating for other participants.
+                    setMessages((prev) => prev.filter((m) => m.userId !== authorId));
+                    // Refresh match (participants list) so any stale state stays consistent.
+                    queryClient.invalidateQueries({ queryKey: [MATCHES_KEY, matchId] });
+                  } catch (err: unknown) {
+                    Alert.alert(
+                      t('common.error'),
+                      err instanceof Error ? err.message : t('block.error'),
+                    );
+                  }
+                },
+              },
+            ],
+          );
+        },
+      },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
+  };
 
   const send = async () => {
     const text = draft.trim();
@@ -167,30 +199,15 @@ export function MatchChatScreen({ route, navigation }: Props) {
     }
   };
 
-  const toggleMute = async (targetId: string, nextMuted: boolean) => {
-    setMuteLoading(true);
-    try {
-      if (nextMuted) {
-        await matchesApi.muteChatUser(matchId, targetId);
-      } else {
-        await matchesApi.unmuteChatUser(matchId, targetId);
-      }
-      await refreshMuted();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : t('match.chatMuteFailed');
-      Alert.alert(t('common.error'), msg);
-    } finally {
-      setMuteLoading(false);
-    }
-  };
-
   useEffect(() => {
     navigation.setOptions({
       headerRight:
         isCreator && match
           ? () => (
               <Pressable
-                onPress={() => setMuteModal(true)}
+                onPress={() =>
+                  (navigation as any).navigate('ChatModeration', { matchId })
+                }
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 style={styles.headerIconBtn}
                 accessibilityRole="button"
@@ -201,7 +218,7 @@ export function MatchChatScreen({ route, navigation }: Props) {
             )
           : undefined,
     });
-  }, [isCreator, match, navigation, t]);
+  }, [isCreator, match, navigation, t, matchId]);
 
   if (isLoading || !match) {
     return (
@@ -247,6 +264,9 @@ export function MatchChatScreen({ route, navigation }: Props) {
               hour: '2-digit',
               minute: '2-digit',
             });
+            const onLongPress = mine
+              ? undefined
+              : () => onMessageLongPress(item.id, item.userId, item.user.username);
             return (
               <View
                 style={[
@@ -254,7 +274,9 @@ export function MatchChatScreen({ route, navigation }: Props) {
                   mine ? styles.bubbleRowMine : styles.bubbleRowOther,
                 ]}
               >
-                <View
+                <Pressable
+                  onLongPress={onLongPress}
+                  delayLongPress={350}
                   style={[
                     styles.bubble,
                     mine ? styles.bubbleMine : styles.bubbleOther,
@@ -279,7 +301,7 @@ export function MatchChatScreen({ route, navigation }: Props) {
                   >
                     {timeLabel}
                   </Text>
-                </View>
+                </Pressable>
               </View>
             );
           }}
@@ -317,35 +339,12 @@ export function MatchChatScreen({ route, navigation }: Props) {
         </View>
       )}
 
-      <Modal visible={muteModal} animationType="slide" transparent>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('match.chatModerationTitle')}</Text>
-              <Pressable onPress={() => setMuteModal(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </Pressable>
-            </View>
-            <Text style={styles.modalHint}>{t('match.chatModerationHint')}</Text>
-            <FlatList
-              data={match.participants.filter((p) => p.userId !== match.creatorId)}
-              keyExtractor={(p) => p.userId}
-              renderItem={({ item: p }) => (
-                <View style={styles.muteRow}>
-                  <Text style={styles.muteName} numberOfLines={1}>
-                    {p.user.username}
-                  </Text>
-                  <Switch
-                    value={mutedIds.has(p.userId)}
-                    onValueChange={(v) => toggleMute(p.userId, v)}
-                    disabled={muteLoading}
-                  />
-                </View>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
+      <ReportSheet
+        visible={reportTarget !== null}
+        targetType={reportTarget?.type ?? 'chat_message'}
+        targetId={reportTarget?.id ?? ''}
+        onClose={() => setReportTarget(null)}
+      />
     </KeyboardAvoidingView>
   );
 }

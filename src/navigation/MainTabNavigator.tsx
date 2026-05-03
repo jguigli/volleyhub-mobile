@@ -16,6 +16,7 @@ import { EventScoreScreen } from '../screens/EventScoreScreen';
 import { TournamentCourtsScreen } from '../screens/TournamentCourtsScreen';
 import { TournamentStandingsScreen } from '../screens/TournamentStandingsScreen';
 import { MatchChatScreen } from '../screens/MatchChatScreen';
+import { ChatModerationScreen } from '../screens/ChatModerationScreen';
 import { MatchParticipantsScreen } from '../screens/MatchParticipantsScreen';
 import { CreateMatchScreen } from '../screens/CreateMatchScreen';
 import { MyMatchesScreen } from '../screens/MyMatchesScreen';
@@ -25,6 +26,7 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { NotificationSettingsScreen } from '../screens/NotificationSettingsScreen';
 import { HelpScreen } from '../screens/HelpScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
+import { BlockedUsersScreen } from '../screens/BlockedUsersScreen';
 import { UserProfileScreen } from '../screens/UserProfileScreen';
 import { SearchUsersScreen } from '../screens/SearchUsersScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
@@ -126,6 +128,11 @@ function FindNavigator() {
         name="MatchChat"
         component={MatchChatScreen}
         options={{ title: t('nav.matchGroupChat') }}
+      />
+      <FindStack.Screen
+        name="ChatModeration"
+        component={ChatModerationScreen}
+        options={{ title: t('match.chatModerationTitle') }}
       />
       <FindStack.Screen
         name="MatchParticipants"
@@ -246,6 +253,14 @@ function MapNavigator() {
         }}
       />
       <MapStack.Screen
+        name="ChatModeration"
+        component={ChatModerationScreen}
+        options={{
+          headerShown: true,
+          title: t('match.chatModerationTitle'),
+        }}
+      />
+      <MapStack.Screen
         name="MatchParticipants"
         component={MatchParticipantsScreen}
         options={{
@@ -349,6 +364,11 @@ function MyNavigator() {
         options={{ title: t('nav.matchGroupChat') }}
       />
       <MyStack.Screen
+        name="ChatModeration"
+        component={ChatModerationScreen}
+        options={{ title: t('match.chatModerationTitle') }}
+      />
+      <MyStack.Screen
         name="MatchParticipants"
         component={MatchParticipantsScreen}
         options={{ title: t('nav.eventParticipants') }}
@@ -416,6 +436,11 @@ function ProfileNavigator() {
         options={{ title: t('settings.editProfile') }}
       />
       <ProfileStack.Screen
+        name="BlockedUsers"
+        component={BlockedUsersScreen}
+        options={{ title: t('block.blockedUsersTitle') }}
+      />
+      <ProfileStack.Screen
         name="MatchDetail"
         component={MatchDetailScreen}
         options={{ title: t('nav.matchDetails') }}
@@ -469,6 +494,11 @@ function ProfileNavigator() {
         name="MatchChat"
         component={MatchChatScreen}
         options={{ title: t('nav.matchGroupChat') }}
+      />
+      <ProfileStack.Screen
+        name="ChatModeration"
+        component={ChatModerationScreen}
+        options={{ title: t('match.chatModerationTitle') }}
       />
       <ProfileStack.Screen
         name="MatchParticipants"
@@ -551,6 +581,11 @@ function NotificationsNavigator() {
         name="MatchChat"
         component={MatchChatScreen}
         options={{ title: t('nav.matchGroupChat') }}
+      />
+      <NotifStack.Screen
+        name="ChatModeration"
+        component={ChatModerationScreen}
+        options={{ title: t('match.chatModerationTitle') }}
       />
       <NotifStack.Screen
         name="UserProfile"

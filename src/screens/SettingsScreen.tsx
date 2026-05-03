@@ -179,6 +179,16 @@ export function SettingsScreen() {
         <TouchableOpacity
           style={styles.settingsItem}
           activeOpacity={0.7}
+          onPress={() => navigation.navigate('BlockedUsers')}
+        >
+          <Ionicons name="shield-outline" size={20} color={colors.textSecondary} />
+          <Text style={styles.settingsLabel}>{t('block.blockedUsersTitle')}</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </TouchableOpacity>
+        <View style={styles.divider} />
+        <TouchableOpacity
+          style={styles.settingsItem}
+          activeOpacity={0.7}
           onPress={() => navigation.navigate('Help')}
         >
           <Ionicons name="help-circle-outline" size={20} color={colors.textSecondary} />
