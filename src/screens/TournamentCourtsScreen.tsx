@@ -201,8 +201,8 @@ export function TournamentCourtsScreen({ route, navigation }: Props) {
       {eventNotStarted ? (
         <View style={styles.emptyCard}>
           <Ionicons name="time-outline" size={32} color={colors.primary} />
-          <Text style={styles.emptyText}>{t('match.tournamentNotStartedYet')}</Text>
-          <Text style={styles.emptySubtext}>{t('match.tournamentNotStartedHint')}</Text>
+          <Text style={styles.notStartedTitle}>{t('match.tournamentNotStartedYet')}</Text>
+          <Text style={styles.notStartedSubtitle}>{t('match.tournamentNotStartedHint')}</Text>
         </View>
       ) : games.length === 0 ? (() => {
         // Compute team fill status
@@ -807,6 +807,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   emptyText: { ...typography.bodySmall, color: colors.textMuted, textAlign: 'center' },
+  notStartedTitle: { ...typography.body, color: colors.text, textAlign: 'center' },
+  notStartedSubtitle: { ...typography.bodySmall, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.lg },
   launchWarning: {
     flexDirection: 'row',
     alignItems: 'center',

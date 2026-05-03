@@ -116,9 +116,13 @@ export function MatchTeamsBoardScreen({ route, navigation }: Props) {
       Date.now() >= new Date(match.scheduledAt).getTime(),
   );
   const isTournament = match ? isTournamentMatch(match) : false;
+  // Bracket is "launched" only when the engine has activated it (assigned courts
+  // and moved a fixture to LIVE/FINISHED). Pre-seeded fixtures sit in PENDING/READY.
   const bracketLaunched = isTournament &&
-    match?.tournamentGames != null &&
-    match.tournamentGames.length > 0;
+    Array.isArray(match?.tournamentGames) &&
+    match!.tournamentGames!.some(
+      (g) => g.status === 'live' || g.status === 'finished',
+    );
   const teamsLocked = match?.status === 'completed' ||
     (isTournament ? bracketLaunched : isLive);
   const isOrganizer = Boolean(user && match && user.id === match.creatorId);

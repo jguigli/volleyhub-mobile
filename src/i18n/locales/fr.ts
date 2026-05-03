@@ -538,6 +538,8 @@ export const fr: TranslationTree = {
     tournamentWarningBoth: "{empty} \u00e9quipe(s) vide(s) (forfait) et {incomplete} \u00e9quipe(s) incompl\u00e8te(s).",
     tournamentNotStartedYet: "Le tournoi n’a pas encore commencé",
     tournamentNotStartedHint: "Les matchs en direct apparaitront ici une fois l’evenement lance.",
+    tournamentStandingsNotStartedHint: "Le classement apparaitra ici une fois le tournoi lancé.",
+    tournamentScoresNotStartedHint: "Les scores apparaitront ici une fois le tournoi lancé.",
     courtsInfoTitle: "Comment fonctionne cette page ?",
     courtsInfoPlayer: "En tant que joueur :\n\n- Chaque terrain affiche le match en cours avec les deux \u00e9quipes.\n- Entrez votre score dans le champ pr\u00e9vu.\n- Appuyez sur Verrouiller pour confirmer votre score. Attention, cette action est d\u00e9finitive.\n- Le match est valid\u00e9 quand les deux \u00e9quipes ont verrouill\u00e9 leur score.\n- Le match suivant d\u00e9marre automatiquement.",
     courtsInfoOrganizer: "En tant qu\u0027organisateur :\n\n- Vous pouvez modifier le score de n\u0027importe quelle \u00e9quipe avec le bouton crayon jaune \u00e0 c\u00f4t\u00e9 du score.\n- Vous pouvez verrouiller le score d\u0027une \u00e9quipe adverse avec le bouton cadenas rouge.\n- Utilisez ces options en cas d\u0027erreur de saisie ou de litige.",

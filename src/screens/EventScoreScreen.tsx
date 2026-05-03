@@ -374,6 +374,7 @@ export function EventScoreScreen({ route, navigation }: Props) {
     const hasPlayedGames = match.tournamentGames?.some(
       (g: any) => g.status === 'finished' && (g.scoreA > 0 || g.scoreB > 0),
     );
+    const noGames = !match.tournamentGames?.length;
     const isCompleted = match.status === 'completed';
 
     if (!hasPlayedGames && isCompleted) {
@@ -382,6 +383,20 @@ export function EventScoreScreen({ route, navigation }: Props) {
           <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
           <Text style={styles.cancelledTitle}>{t('match.notEnoughPlayers')}</Text>
           <Text style={styles.cancelledSubtitle}>{t('match.tournamentNotEnoughTeams')}</Text>
+        </View>
+      );
+    }
+
+    if (noGames) {
+      return (
+        <View style={styles.centered}>
+          <Ionicons name="time-outline" size={32} color={colors.primary} />
+          <Text style={[styles.notStartedTitle, { marginTop: spacing.md }]}>
+            {t('match.tournamentNotStartedYet')}
+          </Text>
+          <Text style={[styles.notStartedSubtitle, { marginTop: spacing.sm }]}>
+            {t('match.tournamentScoresNotStartedHint')}
+          </Text>
         </View>
       );
     }
@@ -554,6 +569,17 @@ const styles = StyleSheet.create({
     color: colors.error,
     textAlign: 'center',
     marginTop: spacing.md,
+  },
+  notStartedTitle: {
+    ...typography.body,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  notStartedSubtitle: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
   },
   cancelledSubtitle: {
     ...typography.body,

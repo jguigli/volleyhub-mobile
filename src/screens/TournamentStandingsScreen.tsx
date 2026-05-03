@@ -73,6 +73,20 @@ export function TournamentStandingsScreen({ route }: Props) {
       </View>
     );
   }
+  if (noGames) {
+    return (
+      <View style={styles.centered}>
+        <Ionicons name="time-outline" size={32} color={colors.primary} />
+        <Text style={[styles.notStartedTitle, { marginTop: spacing.md }]}>
+          {t('match.tournamentNotStartedYet')}
+        </Text>
+        <Text style={[styles.notStartedSubtitle, { marginTop: spacing.sm }]}>
+          {t('match.tournamentStandingsNotStartedHint')}
+        </Text>
+      </View>
+    );
+  }
+
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -258,5 +272,16 @@ const styles = StyleSheet.create({
   emptyText: {
     ...typography.bodySmall,
     color: colors.textMuted,
+  },
+  notStartedTitle: {
+    ...typography.body,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  notStartedSubtitle: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
   },
 });

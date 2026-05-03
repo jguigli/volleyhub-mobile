@@ -534,6 +534,8 @@ export const en = {
     tournamentWarningBoth: '{empty} empty team(s) (forfeit) and {incomplete} incomplete team(s).',
     tournamentNotStartedYet: 'The tournament has not started yet',
     tournamentNotStartedHint: 'Live matches will appear here once the event begins.',
+    tournamentStandingsNotStartedHint: 'Standings will appear here once the tournament is launched.',
+    tournamentScoresNotStartedHint: 'Scores will appear here once the tournament is launched.',
     courtsInfoTitle: 'How does this page work?',
     courtsInfoPlayer: "As a player:\n\n- Each court shows the current match with both teams.\n- Enter your score in the input field.\n- Tap Lock to confirm your score. This action is final.\n- The match is validated when both teams have locked their score.\n- The next match starts automatically.",
     courtsInfoOrganizer: "As an organizer:\n\n- You can edit any team's score using the yellow pencil button next to the score.\n- You can lock a team's score using the red lock button.\n- Use these options in case of input error or dispute.",
