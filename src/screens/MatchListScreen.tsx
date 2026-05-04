@@ -140,8 +140,12 @@ export function MatchListScreen({ navigation }: Props) {
       if (startDay !== today) return false;
     }
     if (dateFilter === 'week') {
-      const weekLimit = now + 7 * 24 * 60 * 60 * 1000;
-      if (startMs < now || startMs > weekLimit) return false;
+      // "This week" = from the start of today to +7 days, so events that already
+      // started today are still included (consistent with the "today" filter).
+      const startOfToday = new Date(now);
+      startOfToday.setHours(0, 0, 0, 0);
+      const weekLimit = startOfToday.getTime() + 7 * 24 * 60 * 60 * 1000;
+      if (startMs < startOfToday.getTime() || startMs > weekLimit) return false;
     }
     return true;
   });
