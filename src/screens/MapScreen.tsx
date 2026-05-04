@@ -12,7 +12,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import MapView, { Marker, Region, PROVIDER_DEFAULT } from 'react-native-maps';
+import ClusteredMapView from 'react-native-map-clustering';
+import RNMapView, { Marker, Region, PROVIDER_DEFAULT } from 'react-native-maps';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MapStackParamList } from '../navigation/types';
@@ -54,7 +55,7 @@ export function MapScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { mapProps: mapThemeProps, mapThemeKey, isDark: isMapDark } = useMapViewDarkModeProps();
   const { lat, lng, loading: locationLoading } = useLocation();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<RNMapView | null>(null);
 
   const [selectedMatch, setSelectedMatch] = useState<NearbyMatch | null>(null);
   const [eventFilter, setEventFilter] = useState<'all' | 'upcoming' | 'ongoing'>('all');
@@ -62,7 +63,6 @@ export function MapScreen({ navigation, route }: Props) {
   const userLat = lat ?? DEFAULT_LAT;
   const userLng = lng ?? DEFAULT_LNG;
 
-  const [mapZoomDelta, setMapZoomDelta] = useState(DEFAULT_DELTA);
   const mapCenterRef = useRef({ latitude: userLat, longitude: userLng });
 
   const initialRegion: Region = {
@@ -73,7 +73,7 @@ export function MapScreen({ navigation, route }: Props) {
   };
 
   // Single fetch on mount with large fixed radius — no refetch on pan/zoom
-  const FETCH_RADIUS = 500_000; // 500km from user position
+  const FETCH_RADIUS = 1_000_000; // 1000km from user position
   const { data: matches, isLoading: matchesLoading } = useNearbyMatches({
     lat: userLat,
     lng: userLng,
@@ -95,36 +95,6 @@ export function MapScreen({ navigation, route }: Props) {
     }
     return all;
   }, [matches, eventFilter]);
-
-  const shouldCluster = mapZoomDelta > 0.08 || matchMarkers.length > 30;
-  const clusterCellSize = useMemo(
-    () => Math.max(0.01, mapZoomDelta / 7),
-    [mapZoomDelta],
-  );
-  const clustered = useMemo(() => {
-    if (!shouldCluster) return [];
-    const buckets = new Map<
-      string,
-      { lat: number; lng: number; count: number; matches: (typeof matchMarkers)[number][] }
-    >();
-    for (const m of matchMarkers) {
-      // Exclude selected match from clusters — it's rendered individually
-      if (selectedMatch && m.id === selectedMatch.id) continue;
-      const r = Math.floor(m.marker_lat / clusterCellSize);
-      const c = Math.floor(m.marker_lng / clusterCellSize);
-      const k = `${r}:${c}`;
-      const cur = buckets.get(k);
-      if (!cur) {
-        buckets.set(k, { lat: m.marker_lat, lng: m.marker_lng, count: 1, matches: [m] });
-      } else {
-        cur.count += 1;
-        cur.lat = (cur.lat * (cur.count - 1) + m.marker_lat) / cur.count;
-        cur.lng = (cur.lng * (cur.count - 1) + m.marker_lng) / cur.count;
-        cur.matches.push(m);
-      }
-    }
-    return Array.from(buckets.values());
-  }, [clusterCellSize, matchMarkers, shouldCluster, selectedMatch]);
 
   const recenterMap = useCallback(() => {
     mapRef.current?.animateToRegion(
@@ -183,9 +153,11 @@ export function MapScreen({ navigation, route }: Props) {
 
   return (
     <View style={styles.container}>
-      <MapView
+      <ClusteredMapView
         key={mapThemeKey}
-        ref={mapRef}
+        mapRef={(ref) => {
+          mapRef.current = ref as unknown as RNMapView | null;
+        }}
         style={styles.map}
         provider={PROVIDER_DEFAULT}
         initialRegion={initialRegion}
@@ -197,61 +169,37 @@ export function MapScreen({ navigation, route }: Props) {
         onPress={handleMapPress}
         onRegionChangeComplete={(region) => {
           mapCenterRef.current = { latitude: region.latitude, longitude: region.longitude };
-          const rounded = Math.round(region.latitudeDelta * 100) / 100;
-          if (rounded !== Math.round(mapZoomDelta * 100) / 100) {
-            setMapZoomDelta(region.latitudeDelta);
-          }
         }}
+        // Supercluster (react-native-map-clustering) settings
+        clusteringEnabled
+        radius={50}
+        minPoints={2}
+        maxZoom={20}
+        clusterColor={colors.primary}
+        clusterTextColor={colors.white}
         {...mapThemeProps}
       >
-        {!shouldCluster &&
-          matchMarkers.map((match) => {
-            const isFull = match.status === 'full';
-            const isSelected = selectedMatch?.id === match.id;
-            return (
-              <Marker
-                key={`match-${match.id}`}
-                coordinate={{
-                  latitude: match.marker_lat,
-                  longitude: match.marker_lng,
-                }}
-  
-                onPress={(e) => {
-                  e.stopPropagation();
-                  setSelectedMatch(match);
-                }}
-              >
-                <View
-                  style={[
-                    styles.matchMarker,
-                    { backgroundColor: matchMarkerBackground(match, isFull) },
-                    isSelected && styles.matchMarkerSelected,
-                  ]}
-                >
-                  <MaterialCommunityIcons name="volleyball" size={12} color={colors.white} />
-                  <Text style={styles.matchMarkerText}>
-                    {match.current_players}/{match.max_players}
-                  </Text>
-                </View>
-              </Marker>
-            );
-          })}
-
-        {/* Always render selected match individually, even when clustered */}
-        {shouldCluster && selectedMatch && matchMarkers.find((m) => m.id === selectedMatch.id) && (() => {
-          const match = matchMarkers.find((m) => m.id === selectedMatch.id)!;
+        {matchMarkers.map((match) => {
           const isFull = match.status === 'full';
+          const isSelected = selectedMatch?.id === match.id;
           return (
             <Marker
-              key={`selected-${match.id}`}
-              coordinate={{ latitude: match.marker_lat, longitude: match.marker_lng }}
-              onPress={(e) => { e.stopPropagation(); setSelectedMatch(match); }}
+              key={`match-${match.id}`}
+              coordinate={{
+                latitude: match.marker_lat,
+                longitude: match.marker_lng,
+              }}
+              onPress={(e) => {
+                e.stopPropagation();
+                setSelectedMatch(match);
+              }}
+              tracksViewChanges={false}
             >
               <View
                 style={[
                   styles.matchMarker,
                   { backgroundColor: matchMarkerBackground(match, isFull) },
-                  styles.matchMarkerSelected,
+                  isSelected && styles.matchMarkerSelected,
                 ]}
               >
                 <MaterialCommunityIcons name="volleyball" size={12} color={colors.white} />
@@ -261,44 +209,8 @@ export function MapScreen({ navigation, route }: Props) {
               </View>
             </Marker>
           );
-        })()}
-
-        {shouldCluster &&
-          clustered.map((group, idx) =>
-            group.count === 1 ? (
-              <Marker
-                key={`s-${group.matches[0].id}`}
-                coordinate={{ latitude: group.matches[0].marker_lat, longitude: group.matches[0].marker_lng }}
-
-                onPress={(e) => { e.stopPropagation(); setSelectedMatch(group.matches[0]); }}
-              >
-                <View style={[styles.matchMarker, { backgroundColor: matchMarkerBackground(group.matches[0], group.matches[0].status === 'full') }]}>
-                  <MaterialCommunityIcons name="volleyball" size={12} color={colors.white} />
-                  <Text style={styles.matchMarkerText}>{group.matches[0].current_players}/{group.matches[0].max_players}</Text>
-                </View>
-              </Marker>
-            ) : (
-              <Marker
-                key={`c-${idx}`}
-                coordinate={{ latitude: group.lat, longitude: group.lng }}
-
-                onPress={(e) => {
-                  e.stopPropagation();
-                  mapRef.current?.animateToRegion({
-                    latitude: group.lat,
-                    longitude: group.lng,
-                    latitudeDelta: Math.max(0.02, mapZoomDelta * 0.55),
-                    longitudeDelta: Math.max(0.02, mapZoomDelta * 0.55),
-                  }, 320);
-                }}
-              >
-                <View style={styles.clusterMarker}>
-                  <Text style={styles.clusterText}>{group.count}</Text>
-                </View>
-              </Marker>
-            ),
-          )}
-      </MapView>
+        })}
+      </ClusteredMapView>
 
       {isLoading && (
         <View style={styles.loadingOverlay}>
