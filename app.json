@@ -18,7 +18,6 @@
         "NSLocationWhenInUseUsageDescription": "VolleyHub uses your location to show nearby courts and matches.",
         "NSLocationAlwaysUsageDescription": "VolleyHub uses your location to show nearby courts and matches.",
         "NSPhotoLibraryUsageDescription": "VolleyHub needs access to your photos to set your profile picture.",
-        "NSCameraUsageDescription": "VolleyHub can use the camera to take your profile picture.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "privacyURL": "https://volleyhub.io/privacy.html",
@@ -170,8 +169,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "VolleyHub needs access to your photos to set your profile picture.",
-          "cameraPermission": "VolleyHub can use the camera to take your profile picture."
+          "photosPermission": "VolleyHub needs access to your photos to set your profile picture."
         }
       ],
       [
