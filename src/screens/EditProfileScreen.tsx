@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -82,10 +82,16 @@ export function EditProfileScreen({ navigation }: Props) {
   const [newAvatarUri, setNewAvatarUri] = useState<string | null>(null);
   const [newAvatarDataUrl, setNewAvatarDataUrl] = useState<string | null>(null);
 
+  // Initialise the form from the user profile on each focus event, but ONLY
+  // once per focus (do not depend on `user` in the effect, otherwise a
+  // background `user` refresh would re-run the effect and overwrite typing).
+  const userRef = useRef(user);
+  userRef.current = user;
   useFocusEffect(
     useCallback(() => {
-      if (user) {
-        const f = applyUserToForm(user);
+      const u = userRef.current;
+      if (u) {
+        const f = applyUserToForm(u);
         setUsername(f.username);
         setSkillLevel(f.skillLevel);
         setPosition(f.position);
@@ -96,7 +102,7 @@ export function EditProfileScreen({ navigation }: Props) {
         setNewAvatarUri(null);
         setNewAvatarDataUrl(null);
       }
-    }, [user]),
+    }, []),
   );
 
   const pickProfilePhoto = async () => {
