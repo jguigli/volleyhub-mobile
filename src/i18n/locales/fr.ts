@@ -4,11 +4,13 @@ export const fr: TranslationTree = {
   common: {
     cancel: 'Annuler',
     done: 'Terminé',
+    save: 'Enregistrer',
     ok: 'OK',
     error: 'Erreur',
     loading: 'Chargement...',
     confirm: 'Confirmer',
     todayAt: "Aujourd'hui à {time}",
+    unsavedChanges: 'Modifications non enregistrées',
   },
   tabs: {
     find: 'Trouver',

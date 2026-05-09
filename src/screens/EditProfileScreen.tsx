@@ -23,6 +23,7 @@ import { useAuthStore } from '../store/auth.store';
 import { usersApi } from '../api/users.api';
 import { USERS_KEY } from '../hooks/useUsers';
 import { SkillBadge } from '../components/SkillBadge';
+import { DirtyFormBar } from '../components/DirtyFormBar';
 import { useTranslation } from '../i18n';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import { useBottomInset } from '../hooks/useBottomInset';
@@ -199,11 +200,36 @@ export function EditProfileScreen({ navigation }: Props) {
     saveMutation.mutate();
   };
 
+  const handleCancelChanges = () => {
+    if (!user) return;
+    const f = applyUserToForm(user);
+    setUsername(f.username);
+    setSkillLevel(f.skillLevel);
+    setPosition(f.position);
+    setClub(f.club);
+    setBio(f.bio);
+    setLeaguePicker(f.leaguePicker);
+    setAvatarEdit('unchanged');
+    setNewAvatarUri(null);
+    setNewAvatarDataUrl(null);
+  };
+
   if (!user) {
     return null;
   }
 
   const saving = saveMutation.isPending;
+
+  // Compute whether the form differs from the current user profile.
+  const initial = applyUserToForm(user);
+  const isDirty =
+    username !== initial.username ||
+    skillLevel !== initial.skillLevel ||
+    position !== initial.position ||
+    club !== initial.club ||
+    bio !== initial.bio ||
+    leaguePicker !== initial.leaguePicker ||
+    avatarEdit !== 'unchanged';
 
   const displayAvatarUri =
     avatarEdit === 'new' && newAvatarUri
@@ -218,7 +244,7 @@ export function EditProfileScreen({ navigation }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: bottomInset }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: bottomInset + 96 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -354,19 +380,14 @@ export function EditProfileScreen({ navigation }: Props) {
           </Picker>
         </View>
 
-        <TouchableOpacity
-          style={[styles.button, saving && styles.buttonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-          activeOpacity={0.8}
-        >
-          {saving ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={styles.buttonText}>{t('profile.saveChanges')}</Text>
-          )}
-        </TouchableOpacity>
       </ScrollView>
+
+      <DirtyFormBar
+        visible={isDirty}
+        isSaving={saving}
+        onCancel={handleCancelChanges}
+        onSave={handleSave}
+      />
     </KeyboardAvoidingView>
   );
 }

@@ -2,11 +2,13 @@ export const en = {
   common: {
     cancel: 'Cancel',
     done: 'Done',
+    save: 'Save',
     ok: 'OK',
     error: 'Error',
     loading: 'Loading...',
     confirm: 'Confirm',
     todayAt: 'Today at {time}',
+    unsavedChanges: 'Unsaved changes',
   },
   tabs: {
     find: 'Find',
