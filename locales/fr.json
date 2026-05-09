@@ -1,0 +1,5 @@
+{
+  "NSLocationWhenInUseUsageDescription": "VolleyHub utilise votre position pour afficher les terrains et matchs à proximité.",
+  "NSLocationAlwaysUsageDescription": "VolleyHub utilise votre position pour afficher les terrains et matchs à proximité.",
+  "NSPhotoLibraryUsageDescription": "VolleyHub a besoin d'accéder à vos photos pour définir votre photo de profil."
+}

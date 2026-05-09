@@ -2,10 +2,14 @@
   "expo": {
     "name": "VolleyHub",
     "slug": "volleyhub",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "automatic",
+    "locales": {
+      "en": "./locales/en.json",
+      "fr": "./locales/fr.json"
+    },
     "splash": {
       "image": "./assets/logo.png",
       "resizeMode": "contain",
@@ -15,9 +19,6 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.volleyhub.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "VolleyHub uses your location to show nearby courts and matches.",
-        "NSLocationAlwaysUsageDescription": "VolleyHub uses your location to show nearby courts and matches.",
-        "NSPhotoLibraryUsageDescription": "VolleyHub needs access to your photos to set your profile picture.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "privacyURL": "https://volleyhub.io/privacy.html",
