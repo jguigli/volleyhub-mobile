@@ -229,7 +229,15 @@ export function MapScreen({ navigation, route }: Props) {
 
       <Pressable
         style={[styles.backButton, { top: insets.top + 12 }]}
-        onPress={() => (navigation as any).getParent()?.navigate('FindTab')}
+        onPress={() => {
+          // In-stack navigation (e.g. FindStack > MatchDetail > Map) → just goBack().
+          // Otherwise (Map is at the root of MapTab) → switch back to FindTab.
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+            return;
+          }
+          (navigation as any).getParent()?.navigate('FindTab');
+        }}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
         <Ionicons name="chevron-back" size={22} color={colors.white} />

@@ -13,6 +13,7 @@ import { EventGuideScreen } from '../screens/EventGuideScreen';
 import { MatchTeamsBoardScreen } from '../screens/MatchTeamsBoardScreen';
 import { TeamsGuideScreen } from '../screens/TeamsGuideScreen';
 import { EventScoreScreen } from '../screens/EventScoreScreen';
+import { MatchLockScreen } from '../screens/MatchLockScreen';
 import { TournamentCourtsScreen } from '../screens/TournamentCourtsScreen';
 import { TournamentStandingsScreen } from '../screens/TournamentStandingsScreen';
 import { MatchChatScreen } from '../screens/MatchChatScreen';
@@ -115,6 +116,11 @@ function FindNavigator() {
         options={{ title: t('match.viewScoreDetail') }}
       />
       <FindStack.Screen
+        name="MatchLock"
+        component={MatchLockScreen}
+        options={{ title: t('match.lockModalTitle') }}
+      />
+      <FindStack.Screen
         name="TournamentCourts"
         component={TournamentCourtsScreen}
         options={{ title: t('match.tournamentCourtsPageTitle') }}
@@ -133,6 +139,11 @@ function FindNavigator() {
         name="ChatModeration"
         component={ChatModerationScreen}
         options={{ title: t('match.chatModerationTitle') }}
+      />
+      <FindStack.Screen
+        name="Map"
+        component={MapScreen}
+        options={{ headerShown: false }}
       />
       <FindStack.Screen
         name="MatchParticipants"
@@ -227,6 +238,11 @@ function MapNavigator() {
           headerShown: true,
           title: t('match.viewScoreDetail'),
         }}
+      />
+      <MapStack.Screen
+        name="MatchLock"
+        component={MatchLockScreen}
+        options={{ headerShown: true, title: t('match.lockModalTitle') }}
       />
       <MapStack.Screen
         name="TournamentCourts"
@@ -349,6 +365,11 @@ function MyNavigator() {
         options={{ title: t('match.viewScoreDetail') }}
       />
       <MyStack.Screen
+        name="MatchLock"
+        component={MatchLockScreen}
+        options={{ title: t('match.lockModalTitle') }}
+      />
+      <MyStack.Screen
         name="TournamentCourts"
         component={TournamentCourtsScreen}
         options={{ title: t('match.tournamentCourtsPageTitle') }}
@@ -367,6 +388,11 @@ function MyNavigator() {
         name="ChatModeration"
         component={ChatModerationScreen}
         options={{ title: t('match.chatModerationTitle') }}
+      />
+      <MyStack.Screen
+        name="Map"
+        component={MapScreen}
+        options={{ headerShown: false }}
       />
       <MyStack.Screen
         name="MatchParticipants"
@@ -481,6 +507,11 @@ function ProfileNavigator() {
         options={{ title: t('match.viewScoreDetail') }}
       />
       <ProfileStack.Screen
+        name="MatchLock"
+        component={MatchLockScreen}
+        options={{ title: t('match.lockModalTitle') }}
+      />
+      <ProfileStack.Screen
         name="TournamentCourts"
         component={TournamentCourtsScreen}
         options={{ title: t('match.tournamentCourtsPageTitle') }}
@@ -499,6 +530,11 @@ function ProfileNavigator() {
         name="ChatModeration"
         component={ChatModerationScreen}
         options={{ title: t('match.chatModerationTitle') }}
+      />
+      <ProfileStack.Screen
+        name="Map"
+        component={MapScreen}
+        options={{ headerShown: false }}
       />
       <ProfileStack.Screen
         name="MatchParticipants"
@@ -573,6 +609,11 @@ function NotificationsNavigator() {
         options={{ title: t('match.viewScoreDetail') }}
       />
       <NotifStack.Screen
+        name="MatchLock"
+        component={MatchLockScreen}
+        options={{ title: t('match.lockModalTitle') }}
+      />
+      <NotifStack.Screen
         name="TournamentCourts"
         component={TournamentCourtsScreen}
         options={{ title: t('match.tournamentCourtsPageTitle') }}
@@ -586,6 +627,11 @@ function NotificationsNavigator() {
         name="ChatModeration"
         component={ChatModerationScreen}
         options={{ title: t('match.chatModerationTitle') }}
+      />
+      <NotifStack.Screen
+        name="Map"
+        component={MapScreen}
+        options={{ headerShown: false }}
       />
       <NotifStack.Screen
         name="UserProfile"

@@ -14,8 +14,7 @@ export type NotificationType =
   | 'connection_accepted'
   | 'player_left_event'
   | 'event_reminder_30min'
-  | 'chat_message'
-  | 'event_cancelled_not_enough_players';
+  | 'chat_message';
 
 export interface GeneralNotification {
   id: string;

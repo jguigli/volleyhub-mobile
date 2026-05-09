@@ -109,12 +109,6 @@ export function MatchTeamsBoardScreen({ route, navigation }: Props) {
     });
   }, [navigation, match]);
 
-  const isLive = Boolean(
-    match &&
-      match.status !== 'completed' &&
-      match.status !== 'cancelled' &&
-      Date.now() >= new Date(match.scheduledAt).getTime(),
-  );
   const isTournament = match ? isTournamentMatch(match) : false;
   // Bracket is "launched" only when the engine has activated it (assigned courts
   // and moved a fixture to LIVE/FINISHED). Pre-seeded fixtures sit in PENDING/READY.
@@ -123,8 +117,10 @@ export function MatchTeamsBoardScreen({ route, navigation }: Props) {
     match!.tournamentGames!.some(
       (g) => g.status === 'live' || g.status === 'finished',
     );
+  // Teams stay open until the match is fully completed (final score locked).
+  // For tournaments, they lock as soon as the bracket is launched.
   const teamsLocked = match?.status === 'completed' ||
-    (isTournament ? bracketLaunched : isLive);
+    (isTournament ? bracketLaunched : false);
   const isOrganizer = Boolean(user && match && user.id === match.creatorId);
 
   const kickFromTeam = useCallback(async (targetUserId: string) => {

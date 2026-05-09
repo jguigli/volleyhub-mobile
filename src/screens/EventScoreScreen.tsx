@@ -23,6 +23,7 @@ import { countSetsWonFromScores, isTournamentMatch } from '../utils/matchDisplay
 import { colors, spacing, borderRadius, typography, shadows } from '../theme';
 import { MatchScoreSummary } from '../components/MatchScoreSummary';
 import { TournamentScoreRecap } from '../components/tournament/TournamentScoreRecap';
+import { matchesApi } from '../api/matches.api';
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'EventScore'>;
 
@@ -301,6 +302,30 @@ export function EventScoreScreen({ route, navigation }: Props) {
       }
     }
     const payloadSets = clinchAt >= 0 ? parsedSets.slice(0, clinchAt + 1) : parsedSets;
+    const willCompleteMatch = clinchAt >= 0;
+
+    // If saving this score will complete the match (winner determined),
+    // verify team composition first via the lock-preview endpoint.
+    if (willCompleteMatch && currentUser?.id === match.creatorId) {
+      try {
+        const preview = await matchesApi.getLockPreview(match.id);
+        const hasWarnings =
+          preview.warnings.teamAEmpty ||
+          preview.warnings.teamBEmpty ||
+          preview.warnings.unassignedCount > 0;
+        // Send the organizer to the dedicated lock screen if assignment is
+        // required OR if there's anything worth warning about.
+        if (preview.needsAssignment || hasWarnings || !preview.canLock) {
+          (navigation as any).navigate('MatchLock', {
+            matchId: match.id,
+            setScores: payloadSets,
+          });
+          return;
+        }
+      } catch {
+        // If the preview fails, fall through and let the save attempt run normally.
+      }
+    }
 
     try {
       await manageMut.mutateAsync({
@@ -550,6 +575,7 @@ export function EventScoreScreen({ route, navigation }: Props) {
           </TouchableOpacity>
         </View>
       ) : null}
+
     </ScrollView>
   );
 }

@@ -25,6 +25,7 @@ export type FindStackParamList = {
   MatchTeamsBoard: { matchId: string };
   TeamsGuide: { tournament: boolean };
   EventScore: { matchId: string };
+  MatchLock: { matchId: string; setScores: { teamA: number; teamB: number }[] };
   TournamentCourts: { matchId: string };
   TournamentStandings: { matchId: string };
   MatchChat: { matchId: string };
@@ -34,6 +35,7 @@ export type FindStackParamList = {
   CreateMatch: CreateMatchParams;
   UserProfile: { userId: string };
   Connections: { userId: string };
+  Map: { focusLat?: number; focusLng?: number };
 };
 
 export type MapStackParamList = {
@@ -47,6 +49,7 @@ export type MapStackParamList = {
   MatchTeamsBoard: { matchId: string };
   TeamsGuide: { tournament: boolean };
   EventScore: { matchId: string };
+  MatchLock: { matchId: string; setScores: { teamA: number; teamB: number }[] };
   TournamentCourts: { matchId: string };
   TournamentStandings: { matchId: string };
   MatchChat: { matchId: string };
@@ -68,6 +71,7 @@ export type MyStackParamList = {
   MatchTeamsBoard: { matchId: string };
   TeamsGuide: { tournament: boolean };
   EventScore: { matchId: string };
+  MatchLock: { matchId: string; setScores: { teamA: number; teamB: number }[] };
   TournamentCourts: { matchId: string };
   TournamentStandings: { matchId: string };
   MatchChat: { matchId: string };
@@ -77,6 +81,7 @@ export type MyStackParamList = {
   CreateMatch: CreateMatchParams;
   UserProfile: { userId: string };
   Connections: { userId: string };
+  Map: { focusLat?: number; focusLng?: number };
 };
 
 export type ProfileStackParamList = {
@@ -95,6 +100,7 @@ export type ProfileStackParamList = {
   MatchTeamsBoard: { matchId: string };
   TeamsGuide: { tournament: boolean };
   EventScore: { matchId: string };
+  MatchLock: { matchId: string; setScores: { teamA: number; teamB: number }[] };
   TournamentCourts: { matchId: string };
   TournamentStandings: { matchId: string };
   MatchChat: { matchId: string };
@@ -105,6 +111,7 @@ export type ProfileStackParamList = {
   SearchUsers: undefined;
   UserProfile: { userId: string };
   Notifications: undefined;
+  Map: { focusLat?: number; focusLng?: number };
 };
 
 export type NotificationsStackParamList = {
@@ -116,11 +123,13 @@ export type NotificationsStackParamList = {
   MatchTeamsBoard: { matchId: string };
   TeamsGuide: { tournament: boolean };
   EventScore: { matchId: string };
+  MatchLock: { matchId: string; setScores: { teamA: number; teamB: number }[] };
   TournamentCourts: { matchId: string };
   MatchChat: { matchId: string };
   ChatModeration: { matchId: string };
   UserProfile: { userId: string };
   Connections: { userId: string };
+  Map: { focusLat?: number; focusLng?: number };
 };
 
 export type MainTabParamList = {

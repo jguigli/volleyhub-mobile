@@ -127,6 +127,22 @@ export const matchesApi = {
     return res.data;
   },
 
+  getLockPreview: async (
+    id: string,
+  ): Promise<{
+    canLock: boolean;
+    needsAssignment: boolean;
+    warnings: {
+      teamAEmpty: boolean;
+      teamBEmpty: boolean;
+      unassignedCount: number;
+      unassignedUserIds: string[];
+    };
+  }> => {
+    const res = await apiClient.get(`/matches/${id}/lock-preview`);
+    return res.data;
+  },
+
   submitFixtureScore: async (
     fixtureId: string,
     score: number,

@@ -54,7 +54,6 @@ const NOTIF_ICON: Record<NotificationType, string> = {
   player_left_event: 'exit-outline',
   event_reminder_30min: 'alarm-outline',
   chat_message: 'chatbubble-ellipses-outline',
-  event_cancelled_not_enough_players: 'alert-circle-outline',
 };
 
 const SWIPE_DELETE_RATIO = 0.10; // 10% de la largeur → supprime
@@ -365,7 +364,6 @@ export function NotificationsScreen({ navigation }: Props) {
         case "player_left_event":
           return t("notifications.headerPlayers");
         case "event_completed":
-        case "event_cancelled_not_enough_players":
           return t("notifications.headerResult");
         case "opponent_score_locked":
         case "score_overridden":
