@@ -75,6 +75,8 @@ export interface Court {
   name: string;
   type: CourtType;
   address: string | null;
+  /** ISO 3166-1 alpha-2 (ex. "FR"). Le nom affichable est résolu côté client selon la locale. */
+  countryCode?: string | null;
   lat: number;
   lng: number;
   createdAt: string;
@@ -202,6 +204,8 @@ export interface NearbyMatch {
   court_name: string;
   court_type: CourtType;
   court_address: string | null;
+  /** ISO 3166-1 alpha-2 (ex. "FR"), nullable pour les lieux créés avant l'ajout du champ. */
+  court_country_code?: string | null;
   court_lat: number;
   court_lng: number;
   /** false = lieu créé par pin (ne pas afficher court_name brut type "Custom Spot …") */

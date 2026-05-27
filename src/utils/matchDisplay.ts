@@ -33,12 +33,28 @@ export type PinAddressParts = {
   /** "12 Rue de la Paix" (ou équivalent) */
   streetLine?: string;
   department?: string;
+  /**
+   * Nom de pays issu d'anciennes lignes en base (avant l'introduction de `countryCode`).
+   * Pour les nouvelles lignes, le pays est résolu depuis `court.countryCode` à l'affichage.
+   */
   country?: string;
 };
 
-/** Interprète `court.address` (ex. « Ville, Pays » ou « Ville, Région, Pays »). */
+/**
+ * Interprète `court.address`.
+ *
+ * Format moderne (≥ migration country_code) : `City, StreetLine, Department`
+ * — le pays vient désormais de `court.countryCode` (ISO 3166-1 alpha-2) et est
+ *   résolu côté client via `formatCountryName`.
+ *
+ * Formats historiques tolérés : `City`, `City, Country`, `City, Department, Country`,
+ * `City, StreetLine, Department, Country`. Quand la chaîne contient 2 segments ou plus
+ * et qu'aucun `countryCode` séparé n'est connu côté appelant, le dernier segment est
+ * traité comme le pays (potentiellement localisé) pour rester rétro-compatible.
+ */
 export function parsePinAddressForDetails(
   address: string | null | undefined,
+  options: { hasCountryCode?: boolean } = {},
 ): PinAddressParts {
   const text = address?.trim();
   if (!text) {
@@ -48,15 +64,33 @@ export function parsePinAddressForDetails(
   if (parts.length === 1) {
     return { city: parts[0] };
   }
-  if (parts.length === 2) {
-    return { city: parts[0], country: parts[1] };
+
+  const hasCountryCode = options.hasCountryCode === true;
+
+  // Format moderne : `country_code` est porté par le court ; toutes les
+  // parts appartiennent à l'adresse française (ville, rue, département).
+  if (hasCountryCode) {
+    const city = parts[0];
+    if (parts.length === 2) {
+      return { city, department: parts[1] };
+    }
+    if (parts.length === 3) {
+      return { city, streetLine: parts[1], department: parts[2] };
+    }
+    return {
+      city,
+      streetLine: parts[1],
+      department: parts.slice(2).join(', '),
+    };
   }
-  // Pin "enrichi" attendu: `City, StreetLine, Department, Country`
-  // - `streetLine` = parts[1] quand on a au moins 4 segments
-  // - sinon on retombe sur le comportement historique: department = tous les segments intermédiaires
+
+  // Rétro-compat : le dernier segment est le nom de pays (potentiellement localisé).
   const city = parts[0];
   const country = parts[parts.length - 1];
 
+  if (parts.length === 2) {
+    return { city, country };
+  }
   if (parts.length >= 4) {
     return {
       city,
@@ -65,12 +99,33 @@ export function parsePinAddressForDetails(
       country,
     };
   }
-
   return {
     city,
     department: parts.slice(1, -1).join(', '),
     country,
   };
+}
+
+/**
+ * Résout un code pays ISO 3166-1 alpha-2 en nom localisé (ex. "FR" → "France" en fr,
+ * "France" en en). On utilise la locale de l'app (`fr` / `en`) — pas celle du device —
+ * pour rester cohérent avec le reste de l'UI traduite. Fallback : le code brut.
+ */
+export function formatCountryName(
+  countryCode: string | null | undefined,
+  appLocale: 'en' | 'fr',
+): string | null {
+  const code = countryCode?.trim().toUpperCase();
+  if (!code || code.length !== 2) {
+    return null;
+  }
+  try {
+    const tag = appLocale === 'fr' ? 'fr-FR' : 'en-US';
+    const dn = new Intl.DisplayNames([tag], { type: 'region' });
+    return dn.of(code) ?? code;
+  } catch {
+    return code;
+  }
 }
 
 export function formatMatchCoords(

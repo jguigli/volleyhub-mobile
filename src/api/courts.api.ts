@@ -13,6 +13,8 @@ export const courtsApi = {
     lat: number;
     lng: number;
     address?: string;
+    /** ISO 3166-1 alpha-2 en majuscules (ex. "FR"). */
+    countryCode?: string;
   }): Promise<Court> => {
     const res = await apiClient.post<Court>('/courts', data);
     return res.data;

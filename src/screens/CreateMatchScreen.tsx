@@ -37,7 +37,7 @@ import {
 } from '../theme';
 import { useBottomInset } from '../hooks/useBottomInset';
 import type { SkillLevel, Court, TournamentSystem } from '../types';
-import { formatMatchCoords } from '../utils/matchDisplay';
+import { formatCountryName, formatMatchCoords } from '../utils/matchDisplay';
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'CreateMatch'>;
 
@@ -48,7 +48,8 @@ type CustomPinPlaceInfo = {
   /** "12 Rue de la Paix" (ou équivalent) */
   streetLine: string | null;
   department: string | null;
-  country: string | null;
+  /** ISO 3166-1 alpha-2 retourné par expo-location (indépendant de la langue système). */
+  countryCode: string | null;
 };
 
 function isCustomCourt(c: Court | null | undefined): boolean {
@@ -478,7 +479,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
     try {
       let city: string | null = null;
       let department: string | null = null;
-      let country: string | null = null;
+      let countryCode: string | null = null;
       let streetLine: string | null = null;
       try {
         const geo = await Location.reverseGeocodeAsync({
@@ -489,7 +490,13 @@ export function CreateMatchScreen({ navigation, route }: Props) {
         if (a) {
           city = a.city;
           department = a.subregion ?? a.district ?? a.region;
-          country = a.country;
+          // `a.country` est traduit dans la langue de l'OS du device (ex. "Pháp",
+          // "Prancis") — on l'ignore et on stocke uniquement le code ISO retourné par
+          // expo-location, qui est langue-agnostique. Le nom affichable est résolu
+          // côté client via `formatCountryName(countryCode, appLocale)`.
+          const isoRaw = (a as unknown as { isoCountryCode?: string | null })
+            .isoCountryCode;
+          countryCode = isoRaw ? isoRaw.toUpperCase() : null;
 
           const anyAddr = a as unknown as Record<string, unknown>;
           // expo-location varie selon plateformes/versions: on lit via "best effort"
@@ -514,12 +521,13 @@ export function CreateMatchScreen({ navigation, route }: Props) {
         /* geocode optional */
       }
 
-      const addressSegments = [city, streetLine, department, country].filter(Boolean);
+      // Le pays n'est plus concaténé dans `address` : il est stocké en base
+      // comme `country_code` (ISO 3166-1) et traduit à l'affichage.
+      const addressSegments = [city, streetLine, department].filter(Boolean);
       const addressLine =
         addressSegments.length > 0
           ? addressSegments.join(', ')
-          : [city, country].filter(Boolean).join(', ') ||
-            (department ? String(department) : undefined);
+          : city ?? (department ? String(department) : undefined);
 
       const court = await createCourt.mutateAsync({
         // Nom technique en base uniquement (l’UI utilise isRegistry + address / coords)
@@ -528,6 +536,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
         lat: plat,
         lng: plng,
         ...(addressLine ? { address: addressLine } : {}),
+        ...(countryCode ? { countryCode } : {}),
       });
       setCustomPinPlaceInfo({
         lat: plat,
@@ -535,7 +544,7 @@ export function CreateMatchScreen({ navigation, route }: Props) {
         city,
         streetLine,
         department,
-        country,
+        countryCode,
       });
       setSelectedCourt(court);
       setShowMapPicker(false);
@@ -678,14 +687,20 @@ export function CreateMatchScreen({ navigation, route }: Props) {
                       {customPinPlaceInfo.department}
                     </Text>
                   ) : null}
-                  {customPinPlaceInfo?.country ? (
-                    <Text style={styles.mapPinDetailLine}>
-                      <Text style={styles.mapPinDetailLabel}>
-                        {t('createMatch.pinnedCountry')} :{' '}
+                  {(() => {
+                    const countryName = formatCountryName(
+                      customPinPlaceInfo?.countryCode,
+                      locale,
+                    );
+                    return countryName ? (
+                      <Text style={styles.mapPinDetailLine}>
+                        <Text style={styles.mapPinDetailLabel}>
+                          {t('createMatch.pinnedCountry')} :{' '}
+                        </Text>
+                        {countryName}
                       </Text>
-                      {customPinPlaceInfo.country}
-                    </Text>
-                  ) : null}
+                    ) : null;
+                  })()}
                   <Text style={styles.mapPinDetailLine}>
                     <Text style={styles.mapPinDetailLabel}>
                       {t('createMatch.pinnedCoordinates')} ·{' '}

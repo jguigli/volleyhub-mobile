@@ -29,6 +29,7 @@ import {
   formatMatchCoords,
   isTournamentMatch,
   matchDetailVenuePlaceFromCourt,
+  formatCountryName,
   parsePinAddressForDetails,
   tournamentSystemTitle,
   userWrittenDescription,
@@ -516,8 +517,11 @@ export function MatchDetailScreen({ route, navigation }: Props) {
 
   const userDescriptionText = userWrittenDescription(match.description);
   const venueLine = matchDetailVenuePlaceFromCourt(match.court);
+  const courtCountryCode = match.court.countryCode ?? null;
   const pinAddressParts = isPinCourt
-    ? parsePinAddressForDetails(match.court.address)
+    ? parsePinAddressForDetails(match.court.address, {
+        hasCountryCode: Boolean(courtCountryCode),
+      })
     : null;
   const pinCityForTitle =
     pinAddressParts?.city?.trim() ||
@@ -528,7 +532,11 @@ export function MatchDetailScreen({ route, navigation }: Props) {
     match.court.lng,
     5,
   );
-  const pinCountryLine = pinAddressParts?.country || null;
+  // Pays affichable : on privilégie le code ISO (langue-agnostique), traduit
+  // dans la locale de l'app. Fallback rétro-compat sur l'éventuel nom encore
+  // présent dans `address` pour les lignes pré-migration.
+  const pinCountryLine =
+    formatCountryName(courtCountryCode, locale) ?? pinAddressParts?.country ?? null;
   const pinDepartmentLine = pinAddressParts?.department || null;
   const pinStreetLine = pinAddressParts?.streetLine || null;
   const pinVenueTitle = isPinCourt

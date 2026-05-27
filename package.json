@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
+    "@formatjs/intl-displaynames": "^7.3.8",
+    "@formatjs/intl-getcanonicallocales": "^3.2.9",
+    "@formatjs/intl-locale": "^5.3.8",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "8.4.4",
     "@react-native-picker/picker": "2.11.1",
